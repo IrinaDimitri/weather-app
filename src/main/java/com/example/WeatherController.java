@@ -53,7 +53,7 @@ public class WeatherController {
         return ResponseEntity.ok("Weather data updated successfully");
     }
 
-    @PostMapping(value = "/add_poyr", produces = MediaType.TEXT_HTML_VALUE)
+    @PostMapping(value = "/add_city", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> addCity(
         @RequestParam String city,
         @RequestParam int temperature

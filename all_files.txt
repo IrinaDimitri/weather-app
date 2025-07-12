@@ -106,8 +106,6 @@ server {
 }-e 
 -----
 -e 
-FILE: output.txt
--e 
 FILE: pom.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -217,39 +215,39 @@ FILE: pom.xml
 -----
 -e 
 FILE: src/logs/weather-app.log
-2025-07-12T21:01:51.002Z  INFO 8 --- [main] com.example.WeatherApp                   : Starting WeatherApp v1.0.0 using Java 17.0.15 with PID 8 (/app/app.jar started by root in /app)
-2025-07-12T21:01:51.005Z  INFO 8 --- [main] com.example.WeatherApp                   : No active profile set, falling back to 1 default profile: "default"
-2025-07-12T21:01:51.738Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2025-07-12T21:01:51.802Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 52 ms. Found 1 JPA repository interfaces.
-2025-07-12T21:01:52.447Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
-2025-07-12T21:01:52.465Z  INFO 8 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2025-07-12T21:01:52.466Z  INFO 8 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.8]
-2025-07-12T21:01:52.553Z  INFO 8 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2025-07-12T21:01:52.554Z  INFO 8 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1496 ms
-2025-07-12T21:01:52.669Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2025-07-12T21:01:52.793Z  INFO 8 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1c7fd41f
-2025-07-12T21:01:52.795Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2025-07-12T21:01:52.963Z  INFO 8 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2025-07-12T21:01:53.036Z  INFO 8 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.2.2.Final
-2025-07-12T21:01:53.040Z  INFO 8 --- [main] org.hibernate.cfg.Environment            : HHH000406: Using bytecode reflection optimizer
-2025-07-12T21:01:53.193Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
-2025-07-12T21:01:53.362Z  INFO 8 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2025-07-12T21:01:53.429Z  INFO 8 --- [main] org.hibernate.orm.dialect                : HHH035001: Using dialect: org.hibernate.dialect.PostgreSQLDialect, version: org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$DialectResolutionInfoImpl@588ab592
-2025-07-12T21:01:53.635Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
-2025-07-12T21:01:54.247Z  INFO 8 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
-2025-07-12T21:01:54.256Z  INFO 8 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2025-07-12T21:01:54.553Z  INFO 8 --- [main] com.example.service.WeatherService       : WeatherService инициализирован
-2025-07-12T21:01:54.555Z  INFO 8 --- [main] com.example.service.WeatherService       : Начато обновление данных о погоде для всех городов
-2025-07-12T21:01:55.322Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Paris успешно обновлены: 25.5°C
-2025-07-12T21:01:55.392Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города London успешно обновлены: 20.8°C
-2025-07-12T21:01:55.457Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Berlin успешно обновлены: 17.0°C
-2025-07-12T21:01:55.458Z  INFO 8 --- [main] com.example.service.WeatherService       : Обновление данных завершено
-2025-07-12T21:01:55.504Z  WARN 8 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2025-07-12T21:01:55.831Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
-2025-07-12T21:01:55.842Z  INFO 8 --- [main] com.example.WeatherApp                   : Started WeatherApp in 5.303 seconds (process running for 5.813)
-2025-07-12T21:02:00.185Z  INFO 8 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2025-07-12T21:02:00.186Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2025-07-12T21:02:00.188Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-07-12T21:15:43.069Z  INFO 8 --- [main] com.example.WeatherApp                   : Starting WeatherApp v1.0.0 using Java 17.0.15 with PID 8 (/app/app.jar started by root in /app)
+2025-07-12T21:15:43.073Z  INFO 8 --- [main] com.example.WeatherApp                   : No active profile set, falling back to 1 default profile: "default"
+2025-07-12T21:15:43.884Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-07-12T21:15:43.952Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 57 ms. Found 1 JPA repository interfaces.
+2025-07-12T21:15:44.664Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2025-07-12T21:15:44.679Z  INFO 8 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-07-12T21:15:44.679Z  INFO 8 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.8]
+2025-07-12T21:15:44.780Z  INFO 8 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-07-12T21:15:44.781Z  INFO 8 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1655 ms
+2025-07-12T21:15:44.922Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-07-12T21:15:45.091Z  INFO 8 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@2e11485
+2025-07-12T21:15:45.094Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-07-12T21:15:45.196Z  INFO 8 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-07-12T21:15:45.263Z  INFO 8 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.2.2.Final
+2025-07-12T21:15:45.266Z  INFO 8 --- [main] org.hibernate.cfg.Environment            : HHH000406: Using bytecode reflection optimizer
+2025-07-12T21:15:45.439Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-12T21:15:45.635Z  INFO 8 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-07-12T21:15:45.735Z  INFO 8 --- [main] org.hibernate.orm.dialect                : HHH035001: Using dialect: org.hibernate.dialect.PostgreSQLDialect, version: org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$DialectResolutionInfoImpl@2d8f2f3a
+2025-07-12T21:15:45.975Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-12T21:15:46.684Z  INFO 8 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2025-07-12T21:15:46.788Z  INFO 8 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-07-12T21:15:47.054Z  INFO 8 --- [main] com.example.service.WeatherService       : WeatherService инициализирован
+2025-07-12T21:15:47.057Z  INFO 8 --- [main] com.example.service.WeatherService       : Начато обновление данных о погоде для всех городов
+2025-07-12T21:15:47.878Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Berlin успешно обновлены: 17.0°C
+2025-07-12T21:15:47.945Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города London успешно обновлены: 20.5°C
+2025-07-12T21:15:48.029Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Paris успешно обновлены: 25.2°C
+2025-07-12T21:15:48.029Z  INFO 8 --- [main] com.example.service.WeatherService       : Обновление данных завершено
+2025-07-12T21:15:48.069Z  WARN 8 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-07-12T21:15:48.429Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2025-07-12T21:15:48.438Z  INFO 8 --- [main] com.example.WeatherApp                   : Started WeatherApp in 5.901 seconds (process running for 6.563)
+2025-07-12T21:15:52.082Z  INFO 8 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-07-12T21:15:52.083Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-07-12T21:15:52.085Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 -e 
 -----
 -e 
@@ -472,7 +470,7 @@ public class WeatherController {
         return ResponseEntity.ok("Weather data updated successfully");
     }
 
-    @PostMapping(value = "/add_poyr", produces = MediaType.TEXT_HTML_VALUE)
+    @PostMapping(value = "/add_city", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> addCity(
         @RequestParam String city,
         @RequestParam int temperature
@@ -492,13 +490,13 @@ public class WeatherController {
 -----
 -e 
 FILE: src/main/resources/application.properties
-FROM amazoncorretto:17-alpine
-WORKDIR /app
-COPY target/*.jar app.jar
-CMD ["java", "-jar", "app.jar"]
 spring.jpa.hibernate.ddl-auto=update
 weather.update.interval=3600000
-logging.file.name=/app/logs/weather-app.log-e 
+logging.file.name=/app/logs/weather-app.log
+spring.datasource.url=jdbc:postgresql://localhost:5432/weather_db
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.jpa.show-sql=true-e 
 -----
 -e 
 FILE: src/main/resources/data.sql
@@ -508,43 +506,4 @@ CREATE TABLE IF NOT EXISTS weather (
 );
 
 INSERT INTO weather (city, temperature) VALUES ('London', 20), ('Paris', 15);-e 
------
--e 
-FILE: structure.txt
-f LICENSE
-d docker
-f docker/docker-compose.yml
-f docker/Dockerfile
-f docker/postgres.env
-d docs
-d nginx
-f nginx/nginx.conf
-f output.txt
-f pom.xml
-d src
-d src/docker
-f src/docker/docker-compose.yml
-f src/docker/Dockerfile
-f src/docker/postgres.env
-d src/docs
-d src/logs
-f src/logs/weather-app.log
-d src/main
-d src/main/java
-d src/main/java/com
-d src/main/java/com/example
-d src/main/java/com/example/model
-f src/main/java/com/example/model/Weather.java
-d src/main/java/com/example/repository
-f src/main/java/com/example/repository/WeatherRepository.java
-d src/main/java/com/example/service
-f src/main/java/com/example/service/WeatherService.java
-f src/main/java/com/example/WeatherApp.java
-f src/main/java/com/example/WeatherController.java
-d src/main/resources
-f src/main/resources/application.properties
-f src/main/resources/data.sql
-d src/nginx
-f src/nginx/nginx.conf
--e 
 -----
