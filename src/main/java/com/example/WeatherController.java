@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.model.Weather;
 import com.example.repository.WeatherRepository;
+import com.example.service.WeatherService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,11 @@ import java.util.List;
 public class WeatherController {
     
     private final WeatherRepository weatherRepository;
+    private final WeatherService weatherService;
 
-    public WeatherController(WeatherRepository weatherRepository) {
+    public WeatherController(WeatherRepository weatherRepository, WeatherService weatherService) {
         this.weatherRepository = weatherRepository;
+        this.weatherService = weatherService;
     }
 
     @GetMapping(value = "/ping", produces = MediaType.TEXT_HTML_VALUE)
@@ -42,6 +45,12 @@ public class WeatherController {
         
         html.append("</ul></body></html>");
         return ResponseEntity.ok(html.toString());
+    }
+
+    @GetMapping("/update")
+    public ResponseEntity<String> updateWeather() {
+        weatherService.updateAllCities();
+        return ResponseEntity.ok("Weather data updated successfully");
     }
 
     @PostMapping(value = "/add_poyr", produces = MediaType.TEXT_HTML_VALUE)

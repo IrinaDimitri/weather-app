@@ -15,7 +15,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.0</version> 
+        <version>3.1.0</version>
         <relativePath/>
     </parent>
 
@@ -25,6 +25,7 @@
     </properties>
 
     <dependencies>
+        <!-- Базовые зависимости Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -35,11 +36,39 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         
+        <!-- База данных -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Логирование -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Работа с JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Для аннотаций -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <!-- Для разработки -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -54,7 +83,23 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <resources>
+                        <resource>
+                            <directory>src/main/resources</directory>
+                            <filtering>true</filtering>
+                        </resource>
+                        <resource>
+                            <directory>src/logs</directory>
+                            <targetPath>${project.build.outputDirectory}/logs</targetPath>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-
 </project>
