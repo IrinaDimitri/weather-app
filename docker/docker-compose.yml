@@ -1,3 +1,4 @@
+
 services:
   backend:
     build:
@@ -13,7 +14,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      LOGGING_FILE_NAME: /src/logs/weather-app.log
+      LOGGING_FILE_NAME: /app/logs/weather-app.log
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
@@ -21,7 +22,7 @@ services:
       retries: 5
     entrypoint: ["sh", "-c", "sleep 10 && java -jar app.jar"]
     volumes:
-      - ./src/logs:/app/logs
+      - ../src/logs:/app/logs
 
   postgres:
     image: postgres:13

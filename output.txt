@@ -1,0 +1,550 @@
+-e 
+FILE: LICENSE
+MIT License
+
+Copyright (c) 2025 Irina Dimitrieva
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-e 
+-----
+-e 
+FILE: docker/docker-compose.yml
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: weather-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      LOGGING_FILE_NAME: /app/logs/weather-app.log
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: ["sh", "-c", "sleep 10 && java -jar app.jar"]
+    volumes:
+      - ../src/logs:/app/logs
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: weather_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres-data:-e 
+-----
+-e 
+FILE: docker/Dockerfile
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+COPY target/weather-app-*.jar app.jar
+CMD ["java", "-jar", "app.jar"]-e 
+-----
+-e 
+FILE: docker/postgres.env
+POSTGRES_PASSWORD=your_strong_password-e 
+-----
+-e 
+FILE: nginx/nginx.conf
+upstream backend {
+    server backend:8080;
+}
+
+server {
+    listen 80;
+    
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+    }
+}-e 
+-----
+-e 
+FILE: output.txt
+-e 
+FILE: pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>weather-app</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Weather Application</name>
+    <description>Spring Boot Weather App</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Базовые зависимости Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        
+        <!-- База данных -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Логирование -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Работа с JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Для аннотаций -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <!-- Для разработки -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <resources>
+                        <resource>
+                            <directory>src/main/resources</directory>
+                            <filtering>true</filtering>
+                        </resource>
+                        <resource>
+                            <directory>src/logs</directory>
+                            <targetPath>${project.build.outputDirectory}/logs</targetPath>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>-e 
+-----
+-e 
+FILE: src/logs/weather-app.log
+2025-07-12T21:01:51.002Z  INFO 8 --- [main] com.example.WeatherApp                   : Starting WeatherApp v1.0.0 using Java 17.0.15 with PID 8 (/app/app.jar started by root in /app)
+2025-07-12T21:01:51.005Z  INFO 8 --- [main] com.example.WeatherApp                   : No active profile set, falling back to 1 default profile: "default"
+2025-07-12T21:01:51.738Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-07-12T21:01:51.802Z  INFO 8 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 52 ms. Found 1 JPA repository interfaces.
+2025-07-12T21:01:52.447Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2025-07-12T21:01:52.465Z  INFO 8 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-07-12T21:01:52.466Z  INFO 8 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.8]
+2025-07-12T21:01:52.553Z  INFO 8 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-07-12T21:01:52.554Z  INFO 8 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1496 ms
+2025-07-12T21:01:52.669Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-07-12T21:01:52.793Z  INFO 8 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1c7fd41f
+2025-07-12T21:01:52.795Z  INFO 8 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-07-12T21:01:52.963Z  INFO 8 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-07-12T21:01:53.036Z  INFO 8 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.2.2.Final
+2025-07-12T21:01:53.040Z  INFO 8 --- [main] org.hibernate.cfg.Environment            : HHH000406: Using bytecode reflection optimizer
+2025-07-12T21:01:53.193Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-12T21:01:53.362Z  INFO 8 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-07-12T21:01:53.429Z  INFO 8 --- [main] org.hibernate.orm.dialect                : HHH035001: Using dialect: org.hibernate.dialect.PostgreSQLDialect, version: org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$DialectResolutionInfoImpl@588ab592
+2025-07-12T21:01:53.635Z  INFO 8 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-12T21:01:54.247Z  INFO 8 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2025-07-12T21:01:54.256Z  INFO 8 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-07-12T21:01:54.553Z  INFO 8 --- [main] com.example.service.WeatherService       : WeatherService инициализирован
+2025-07-12T21:01:54.555Z  INFO 8 --- [main] com.example.service.WeatherService       : Начато обновление данных о погоде для всех городов
+2025-07-12T21:01:55.322Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Paris успешно обновлены: 25.5°C
+2025-07-12T21:01:55.392Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города London успешно обновлены: 20.8°C
+2025-07-12T21:01:55.457Z  INFO 8 --- [main] com.example.service.WeatherService       : Данные для города Berlin успешно обновлены: 17.0°C
+2025-07-12T21:01:55.458Z  INFO 8 --- [main] com.example.service.WeatherService       : Обновление данных завершено
+2025-07-12T21:01:55.504Z  WARN 8 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-07-12T21:01:55.831Z  INFO 8 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2025-07-12T21:01:55.842Z  INFO 8 --- [main] com.example.WeatherApp                   : Started WeatherApp in 5.303 seconds (process running for 5.813)
+2025-07-12T21:02:00.185Z  INFO 8 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-07-12T21:02:00.186Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-07-12T21:02:00.188Z  INFO 8 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+-e 
+-----
+-e 
+FILE: src/main/java/com/example/model/Weather.java
+package com.example.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "weather")
+public class Weather {
+    @Id
+    private String city;
+    private int temperature;
+
+// Конструкторы
+    public Weather() {}
+
+    public Weather(String city, int temperature) {
+        this.city = city;
+        this.temperature = temperature;
+    }
+
+// Геттеры и сеттеры
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public int getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(int temperature) {
+        this.temperature = temperature;
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/repository/WeatherRepository.java
+package com.example.repository;
+
+import com.example.model.Weather;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface WeatherRepository extends JpaRepository<Weather, String> {
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/service/WeatherService.java
+package com.example.service;
+
+import com.example.model.Weather;
+import com.example.repository.WeatherRepository;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.Map;
+
+@Slf4j
+@Service
+public class WeatherService {
+    private static final String API_URL = "https://api.open-meteo.com/v1/forecast";
+    private final WeatherRepository weatherRepo;
+    
+    private static final Map<String, double[]> CITIES = Map.of(
+        "Berlin", new double[]{52.52, 13.41},
+        "London", new double[]{51.51, -0.13},
+        "Paris", new double[]{48.85, 2.35}
+    );
+
+    @Autowired
+    public WeatherService(WeatherRepository weatherRepo) {
+        this.weatherRepo = weatherRepo;
+        log.info("WeatherService инициализирован");
+    }
+
+    @PostConstruct
+    @Scheduled(fixedRateString = "${weather.update.interval}")
+    public void updateAllCities() {
+        log.info("Начато обновление данных о погоде для всех городов");
+        CITIES.keySet().forEach(city -> {
+            try {
+                updateCityWeather(city);
+            } catch (Exception e) {
+                log.error("Ошибка при обновлении данных для города {}: {}", city, e.getMessage());
+                saveDefaultTemp(city);
+            }
+        });
+        log.info("Обновление данных завершено");
+    }
+
+    public void updateCityWeather(String city) {
+        log.debug("Обновление данных для города: {}", city);
+        double[] coords = CITIES.get(city);
+        if (coords == null) {
+            log.warn("Неизвестный город: {}", city);
+            throw new IllegalArgumentException("Unknown city");
+        }
+        
+        try {
+            double temp = fetchCurrentTemperature(coords[0], coords[1]);
+            weatherRepo.save(new Weather(city, (int) Math.round(temp)));
+            log.info("Данные для города {} успешно обновлены: {}°C", city, temp);
+        } catch (JsonProcessingException e) {
+            log.error("Ошибка парсинга JSON для города {}: {}", city, e.getMessage());
+            saveDefaultTemp(city);
+        } catch (Exception e) {
+            log.error("Неожиданная ошибка для города {}: {}", city, e.getMessage());
+            saveDefaultTemp(city);
+        }
+    }
+
+    private double fetchCurrentTemperature(double lat, double lon) throws JsonProcessingException {
+        String url = String.format("%s?latitude=%.2f&longitude=%.2f&current_weather=true", 
+                         API_URL, lat, lon);
+        log.debug("Запрос к API: {}", url);
+        
+        String response = new RestTemplate().getForObject(url, String.class);
+        JsonNode root = new ObjectMapper().readTree(response);
+        
+        double temp = root.path("current_weather")
+                       .path("temperature")
+                       .asDouble();
+        
+        log.debug("Получена температура: {}°C для координат {}, {}", temp, lat, lon);
+        return temp;
+    }
+
+    private void saveDefaultTemp(String city) {
+        int temp = switch(city) {
+            case "Berlin" -> 18;
+            case "London" -> 20;
+            case "Paris" -> 15;
+            default -> 10;
+        };
+        weatherRepo.save(new Weather(city, temp));
+        log.warn("Использовано значение по умолчанию для города {}: {}°C", city, temp);
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/WeatherApp.java
+package com.example;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class WeatherApp {
+    public static void main(String[] args) {
+        SpringApplication.run(WeatherApp.class, args);
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/WeatherController.java
+package com.example.controller;
+
+import com.example.model.Weather;
+import com.example.repository.WeatherRepository;
+import com.example.service.WeatherService;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+public class WeatherController {
+    
+    private final WeatherRepository weatherRepository;
+    private final WeatherService weatherService;
+
+    public WeatherController(WeatherRepository weatherRepository, WeatherService weatherService) {
+        this.weatherRepository = weatherRepository;
+        this.weatherService = weatherService;
+    }
+
+    @GetMapping(value = "/ping", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("<html><body><h1>PONG</h1></body></html>");
+    }
+
+    @GetMapping(value = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("{\"status\": \"HEALTHY\"}");
+    }
+
+    @GetMapping(value = "/list", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> list() {
+        StringBuilder html = new StringBuilder("<html><body><ul>");
+        
+        List<Weather> weatherList = weatherRepository.findAll();
+        for (Weather weather : weatherList) {
+            html.append("<li>")
+                .append(escapeHtml(weather.getCity()))
+                .append(": ")
+                .append(weather.getTemperature())
+                .append("°C</li>");
+        }
+        
+        html.append("</ul></body></html>");
+        return ResponseEntity.ok(html.toString());
+    }
+
+    @GetMapping("/update")
+    public ResponseEntity<String> updateWeather() {
+        weatherService.updateAllCities();
+        return ResponseEntity.ok("Weather data updated successfully");
+    }
+
+    @PostMapping(value = "/add_poyr", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> addCity(
+        @RequestParam String city,
+        @RequestParam int temperature
+    ) {
+        Weather weather = new Weather(city, temperature);
+        weatherRepository.save(weather);
+        
+        return ResponseEntity.ok("<html><body><p>Город добавлен!</p></body></html>");
+    }
+
+    private String escapeHtml(String input) {
+        return input.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;");
+    }
+}-e 
+-----
+-e 
+FILE: src/main/resources/application.properties
+FROM amazoncorretto:17-alpine
+WORKDIR /app
+COPY target/*.jar app.jar
+CMD ["java", "-jar", "app.jar"]
+spring.jpa.hibernate.ddl-auto=update
+weather.update.interval=3600000
+logging.file.name=/app/logs/weather-app.log-e 
+-----
+-e 
+FILE: src/main/resources/data.sql
+CREATE TABLE IF NOT EXISTS weather (
+    city TEXT PRIMARY KEY,
+    temperature INT
+);
+
+INSERT INTO weather (city, temperature) VALUES ('London', 20), ('Paris', 15);-e 
+-----
+-e 
+FILE: structure.txt
+f LICENSE
+d docker
+f docker/docker-compose.yml
+f docker/Dockerfile
+f docker/postgres.env
+d docs
+d nginx
+f nginx/nginx.conf
+f output.txt
+f pom.xml
+d src
+d src/docker
+f src/docker/docker-compose.yml
+f src/docker/Dockerfile
+f src/docker/postgres.env
+d src/docs
+d src/logs
+f src/logs/weather-app.log
+d src/main
+d src/main/java
+d src/main/java/com
+d src/main/java/com/example
+d src/main/java/com/example/model
+f src/main/java/com/example/model/Weather.java
+d src/main/java/com/example/repository
+f src/main/java/com/example/repository/WeatherRepository.java
+d src/main/java/com/example/service
+f src/main/java/com/example/service/WeatherService.java
+f src/main/java/com/example/WeatherApp.java
+f src/main/java/com/example/WeatherController.java
+d src/main/resources
+f src/main/resources/application.properties
+f src/main/resources/data.sql
+d src/nginx
+f src/nginx/nginx.conf
+-e 
+-----
