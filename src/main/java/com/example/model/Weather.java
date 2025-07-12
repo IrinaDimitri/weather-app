@@ -1,17 +1,21 @@
 package com.example.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "weather")
+@Schema(description = "Модель данных о погоде в городе")
 public class Weather {
     @Id
+    @Schema(description = "Название города", example = "Berlin")
     private String city;
+    
+    @Schema(description = "Температура в градусах Цельсия", example = "20")
     private int temperature;
 
-// Конструкторы
     public Weather() {}
 
     public Weather(String city, int temperature) {
@@ -19,7 +23,7 @@ public class Weather {
         this.temperature = temperature;
     }
 
-// Геттеры и сеттеры
+    // Геттеры и сеттеры остаются без изменений
     public String getCity() {
         return city;
     }

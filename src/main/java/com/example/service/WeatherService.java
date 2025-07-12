@@ -28,7 +28,6 @@ public class WeatherService {
     @Autowired
     public WeatherService(WeatherRepository weatherRepo) {
         this.weatherRepo = weatherRepo;
-        log.info("WeatherService инициализирован");
     }
 
     @PostConstruct
@@ -75,12 +74,9 @@ public class WeatherService {
         String response = new RestTemplate().getForObject(url, String.class);
         JsonNode root = new ObjectMapper().readTree(response);
         
-        double temp = root.path("current_weather")
-                       .path("temperature")
-                       .asDouble();
-        
-        log.debug("Получена температура: {}°C для координат {}, {}", temp, lat, lon);
-        return temp;
+        return root.path("current_weather")
+                 .path("temperature")
+                 .asDouble();
     }
 
     private void saveDefaultTemp(String city) {
