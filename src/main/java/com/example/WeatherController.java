@@ -140,53 +140,6 @@ public class WeatherController {
         }
     }
 
-    // @Operation(
-    //     summary = "Обновить данные о погоде для города",
-    //     description = "Обновляет данные о погоде для указанного города из внешнего API и сохраняет в базе данных.",
-    //     responses = {
-    //         @ApiResponse(
-    //             responseCode = "200",
-    //             description = "Данные о погоде успешно обновлены",
-    //             content = @Content(mediaType = "application/json")
-    //         ),
-    //         @ApiResponse(
-    //             responseCode = "404",
-    //             description = "Город не найден в базе данных и/или в Open Weather API",
-    //             content = @Content(mediaType = "application/json")
-    //         )
-    //     }
-    // )
-
-    // @PostMapping(value = "/update", produces = MediaType.TEXT_HTML_VALUE)
-    // public ResponseEntity<String> updateWeather(
-    //     @RequestParam(required = false) String city
-    // ) {
-    //     log.info("Запрос обновления данных о погоде для города: {}", city);
-    //     try {
-    //         if (city == null || city.trim().isEmpty()) {
-    //             weatherService.updateAllCities();
-    //             return ResponseEntity.ok(
-    //                 "<html><body><h2>Успех!</h2><p>Данные о погоде для всех городов успешно обновлены.</p></body></html>");
-    //         } else {
-    //             boolean updated = weatherService.updateCityWeather(city);
-    //             if (!updated) {
-    //                 String msg = "Город \"" + city + "\" не найден в базе данных.";
-    //                 log.warn(msg);
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-    //                         .body(errorHtml(msg));
-    //             }
-    //             log.info("Данные о погоде для города {} успешно обновлены", city);
-    //             return ResponseEntity.ok(
-    //                 "<html><body><h2>Успех!</h2><p>Данные о погоде для города \"" + escapeHtml(city) + "\" успешно обновлены.</p></body></html>");
-    //         }
-    //     } catch (Exception e) {
-    //         String errorMsg = "Внутренняя ошибка сервера при обновлении данных: " + e.getMessage();
-    //         log.error(errorMsg, e);
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-    //                 .body(errorHtml(errorMsg));
-    //     }
-    // }
-
     @DeleteMapping(value = "/delete", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> delete(
         @RequestParam(required = false) String city,

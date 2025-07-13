@@ -23,7 +23,6 @@ public class Weather {
         this.temperature = temperature;
     }
 
-    // Геттеры и сеттеры остаются без изменений
     public String getCity() {
         return city;
     }

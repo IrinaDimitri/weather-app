@@ -26,10 +26,6 @@ import org.springframework.context.annotation.Configuration;
         @Server(
             url = "http://localhost:8080",
             description = "Локальный сервер"
-        ),
-        @Server(
-            url = "http://api.weather.example.com",
-            description = "Продакшен сервер"
         )
     }
 )
