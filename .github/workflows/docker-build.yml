@@ -54,15 +54,13 @@ jobs:
       - name: Build Docker containers
         run: |
           docker-compose -f docker/docker-compose.yml build
-          docker-compose -f docker/docker-compose.yml images
+          docker images
 
       - name: Save Docker images
         run: |
-          BACKEND_IMAGE=$(docker-compose -f docker/docker-compose.yml images -q backend)
-          POSTGRES_IMAGE=$(docker-compose -f docker/docker-compose.yml images -q postgres)
           mkdir -p docker-images
-          docker save -o docker-images/backend.tar $BACKEND_IMAGE
-          docker save -o docker-images/postgres.tar $POSTGRES_IMAGE
+          docker save -o docker-images/backend.tar weather-app
+          docker save -o docker-images/postgres.tar postgres:13-alpine
           ls -lh docker-images/
 
       - name: Upload Docker images
@@ -75,6 +73,16 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13-alpine
+        env:
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: weather_db
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -95,20 +103,26 @@ jobs:
           docker load -i docker-images/postgres.tar
           docker images
 
-      - name: Start services
+      - name: Start backend
         run: |
-          docker-compose -f docker/docker-compose.yml up -d
+          docker run -d --name weather-backend \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weather_db \
+            -e SPRING_DATASOURCE_USERNAME=postgres \
+            -e SPRING_DATASOURCE_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
+            -p 8080:8080 \
+            weather-app
           sleep 15
-          docker-compose ps
 
       - name: Run health checks
         run: |
           curl -s http://localhost:8080/health | jq .
           curl -s http://localhost:8080/ping
-          docker-compose exec postgres pg_isready -U postgres
+          url -s http://localhost/ping
+          pg_isready -h localhost -U postgres
 
       - name: Cleanup
         if: always()
         run: |
-          docker-compose -f docker/docker-compose.yml down
+          docker stop weather-backend || true
+          docker rm weather-backend || true
           docker system prune -f
