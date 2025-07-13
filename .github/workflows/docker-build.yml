@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: ["main", "develop"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgres' }}
@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Установка Docker и Docker Compose
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
@@ -53,14 +52,18 @@ jobs:
         run: ./mvnw clean package -DskipTests
 
       - name: Build Docker containers
-        run: docker-compose -f docker/docker-compose.yml build
+        run: |
+          docker-compose -f docker/docker-compose.yml build
+          docker-compose -f docker/docker-compose.yml images
 
-      # Остальные шаги остаются без изменений
       - name: Save Docker images
         run: |
+          BACKEND_IMAGE=$(docker-compose -f docker/docker-compose.yml images -q backend)
+          POSTGRES_IMAGE=$(docker-compose -f docker/docker-compose.yml images -q postgres)
           mkdir -p docker-images
-          docker save -o docker-images/backend.tar weather-app
-          docker save -o docker-images/postgres.tar postgres:13-alpine
+          docker save -o docker-images/backend.tar $BACKEND_IMAGE
+          docker save -o docker-images/postgres.tar $POSTGRES_IMAGE
+          ls -lh docker-images/
 
       - name: Upload Docker images
         uses: actions/upload-artifact@v4
@@ -90,6 +93,7 @@ jobs:
         run: |
           docker load -i docker-images/backend.tar
           docker load -i docker-images/postgres.tar
+          docker images
 
       - name: Start services
         run: |
