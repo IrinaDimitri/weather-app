@@ -98,25 +98,33 @@ jobs:
           docker load -i docker-images/postgres.tar
           docker images
 
-      - name: Start backend
+      - name: Start backend with network
         run: |
+          docker network create weather-net || true
           docker run -d --name weather-backend \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/weather_db \
+            --network weather-net \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weather_db \
             -e SPRING_DATASOURCE_USERNAME=postgres \
             -e SPRING_DATASOURCE_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
             -p 8080:8080 \
             weather-app
-          sleep 15
+          sleep 20  # Увеличили время ожидания
+
+      - name: Check Postgres readiness
+        run: |
+          docker run --rm --network weather-net postgres:13-alpine pg_isready -h postgres -U postgres -t 30
 
       - name: Run health checks
         run: |
+          echo "Waiting for backend to start..."
+          timeout 60 bash -c 'until curl -s http://localhost:8080/health; do sleep 2; done'
           curl -s http://localhost:8080/health | jq .
           curl -s http://localhost:8080/ping
-          pg_isready -h localhost -U postgres
 
       - name: Cleanup
         if: always()
         run: |
           docker stop weather-backend || true
           docker rm weather-backend || true
+          docker network rm weather-net || true
           docker system prune -f
