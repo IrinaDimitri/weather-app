@@ -6,61 +6,54 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgres' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgres' }}
-
     steps:
-      # Шаг 1: Получение кода
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      # Шаг 2: Установка Java
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # Шаг 3: Проверка наличия mvnw
-      - name: Verify Maven Wrapper
+      - name: Setup Maven Wrapper
         run: |
-          ls -la mvnw* .mvn/ || true
           if [ ! -f "mvnw" ]; then
-            echo "Maven Wrapper not found, generating..."
-            mvn -N wrapper:wrapper
+            mvn -N wrapper:wrapper -Dmaven=3.9.6
           fi
           chmod +x mvnw
+          ./mvnw --version
 
-      # Шаг 4: Кэширование Maven-зависимостей
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
+          path: |
+            ~/.m2/repository
+            target/
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      # Шаг 5: Сборка проекта (из корня!)
       - name: Build with Maven
-        run: |
-          ./mvnw clean package -DskipTests
+        run: ./mvnw clean package -DskipTests
 
-      # Шаг 6: Сборка Docker-образов
       - name: Build Docker containers
-        run: |
-          docker-compose -f docker/docker-compose.yml build
+        run: docker-compose -f docker/docker-compose.yml build
 
-      # Шаг 7: Сохранение образов
       - name: Save Docker images
         run: |
           mkdir -p docker-images
           docker save -o docker-images/backend.tar weather-app
           docker save -o docker-images/postgres.tar postgres:13-alpine
+          ls -lh docker-images/
 
-      # Шаг 8: Сохранение артефактов
       - name: Upload Docker images
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docker-images
           path: docker-images/*.tar
@@ -69,46 +62,36 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
-      # Шаг 1: Получение кода
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      # Шаг 2: Загрузка сохраненных образов
       - name: Download Docker images
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: docker-images
+          path: docker-images
 
-      # Шаг 3: Загрузка образов в Docker
       - name: Load Docker images
         run: |
           docker load -i docker-images/backend.tar
           docker load -i docker-images/postgres.tar
+          docker images
 
-      # Шаг 4: Запуск контейнеров
-      - name: Start services
+      - name: Start services with healthcheck
         run: |
           docker-compose -f docker/docker-compose.yml up -d
-          sleep 15  # Ожидаем инициализации БД
+          timeout 60s bash -c 'until docker-compose exec postgres pg_isready -U postgres; do sleep 2; done'
           docker-compose ps
 
-      # Шаг 5: Проверка работы
-      - name: Run health checks
+      - name: Run API tests
         run: |
-          # Проверка backend
-          echo "Testing /health endpoint:"
-          curl -s http://localhost:8080/health | jq .
-          
-          echo "Testing /ping endpoint:"
-          curl -s http://localhost:8080/ping
-          
-          # Проверка PostgreSQL
-          echo "Testing PostgreSQL connection:"
-          docker-compose exec postgres pg_isready -U postgres
+          echo "Testing endpoints:"
+          curl -s http://localhost:8080/health | jq -e '.status == "HEALTHY"' || exit 1
+          curl -s http://localhost:8080/ping | grep -q "PONG" || exit 1
+          echo "All tests passed!"
 
-      # Шаг 6: Остановка контейнеров
       - name: Cleanup
         if: always()
         run: |
-          docker-compose -f docker/docker-compose.yml down
+          docker-compose -f docker/docker-compose.yml down --volumes
+          docker system prune -af
