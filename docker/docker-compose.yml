@@ -18,14 +18,12 @@ services:
       SPRING_JPA_DATABASE-PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       LOGGING_FILE_NAME: /app/logs/weather-app.log
     networks:
-      weather-net:
-        aliases:
-          - backend
+      - weather-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
     entrypoint: ["sh", "-c", "sleep 15 && java -jar app.jar"]
     volumes:
       - ../src/logs:/app/logs
@@ -40,9 +38,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
-      weather-net:
-        aliases:
-          - postgres
+      - weather-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -65,10 +61,9 @@ services:
       - weather-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 5
-    restart: unless-stopped
+      retries: 3
 
 volumes:
   postgres-data:
@@ -76,4 +71,3 @@ volumes:
 networks:
   weather-net:
     driver: bridge
-    name: weather-app-network

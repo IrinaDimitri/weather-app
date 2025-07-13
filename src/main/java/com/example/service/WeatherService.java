@@ -38,23 +38,23 @@ public class WeatherService {
         this.weatherRepo = weatherRepo;
     }
 
-    @PostConstruct
-    @Scheduled(fixedRateString = "${weather.update.interval}")
-        public void scheduledUpdate() {
-        log.info("Запуск обновления данных по расписанию");
-        updateAllCities();
-    }
-    public void updateAllCities() {
-        weatherRepo.findAll().forEach(weather -> {
-            log.info("Обновление данных для всех городов...");
-            try {
-                updateCityWeather(weather.getCity());
-            } catch (Exception e) {
-                log.error("Ошибка при обновлении города {}: {}", weather.getCity(), e.getMessage());
-                saveDefaultTemp(weather.getCity());
-            }
-        });
-    }
+    // @PostConstruct
+    // @Scheduled(fixedRateString = "${weather.update.interval}")
+    //     public void scheduledUpdate() {
+    //     log.info("Запуск обновления данных по расписанию");
+    //     updateAllCities();
+    // }
+    // public void updateAllCities() {
+    //     weatherRepo.findAll().forEach(weather -> {
+    //         log.info("Обновление данных для всех городов...");
+    //         try {
+    //             updateCityWeather(weather.getCity());
+    //         } catch (Exception e) {
+    //             log.error("Ошибка при обновлении города {}: {}", weather.getCity(), e.getMessage());
+    //             saveDefaultTemp(weather.getCity());
+    //         }
+    //     });
+    // }
 
     // @Operation(
     //     summary = "Обновить данные о погоде для города",
@@ -72,14 +72,14 @@ public class WeatherService {
     //         )
     //     }
     // )
-    public boolean updateCityWeather(String city) throws Exception {
-        double[] coords = getCityCoordinates(city);
-        double temperature = fetchCurrentTemperature(coords[0], coords[1]);
-        Weather weather = weatherRepo.findById(city).orElse(new Weather(city, 0));
-        weather.setTemperature((int) Math.round(temperature));
-        weatherRepo.save(weather);
-        return true;
-    }
+    // public boolean updateCityWeather(String city) throws Exception {
+    //     double[] coords = getCityCoordinates(city);
+    //     double temperature = fetchCurrentTemperature(coords[0], coords[1]);
+    //     Weather weather = weatherRepo.findById(city).orElse(new Weather(city, 0));
+    //     weather.setTemperature((int) Math.round(temperature));
+    //     weatherRepo.save(weather);
+    //     return true;
+    // }
 
     @Operation(
         summary = "Обновить данные о погоде для всех городов",
