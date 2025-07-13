@@ -99,7 +99,7 @@ jobs:
             -e POSTGRES_DB=weather_db \
             -p 5432:5432 \
             postgres:13-alpine
-          sleep 10  # Даем время для инициализации Postgres
+          sleep 10  # время для инициализации Postgres
 
       - name: Check Postgres readiness
         run: |
@@ -115,7 +115,7 @@ jobs:
             -e SPRING_DATASOURCE_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
             -p 8080:8080 \
             weather-app
-          sleep 15  # Даем время для старта Spring Boot
+          sleep 15  #время для старта Spring Boot
 
       - name: Check Backend logs
         run: docker logs backend

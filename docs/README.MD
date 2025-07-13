@@ -1,45 +1,126 @@
 # Weather Application
 
-Простое веб-приложение для отображения данных о погоде с PostgreSQL, Nginx и Docker Compose.
+## Оглавление
+1. [Структура проекта](#структура-проекта)
+2. [Сборка и запуск](#сборка-и-запуск)
+3. [Функционал проекта](#функционал-проекта)
+4. [Проверка методов](#проверка-методов)
+5. [Подключение к PostgreSQL](#подключение-к-postgresql)
+6. [Дополнительная информация](#дополнительная-информация)
 
-## Содержание
-1. Требования
-2. Установка
-3. Использование
-4. Проверка работы
-5. Дополнительно
+## Структура проекта
+```text
+.
+├── .dockerignore
+├── .mvn
+│   └── wrapper
+│       └── maven-wrapper.properties
+├── LICENSE
+├── docker
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── postgres.env
+├── docs
+│   ├── README.MD
+│   └── Weather-app.postman_collection.json
+├── mvnw
+├── mvnw.cmd
+├── nginx
+│   ├── logs
+│   │   ├── access.log
+│   │   └── error.log
+│   └── nginx.conf
+├── pom.xml
+└── src
+    ├── logs
+    │   └── weather-app.log
+    └── main
+        ├── java
+        │   └── com
+        │       └── example
+        │           ├── WeatherApp.java
+        │           ├── WeatherController.java
+        │           ├── config
+        │           │   └── SwaggerConfig.java
+        │           ├── model
+        │           │   └── Weather.java
+        │           ├── repository
+        │           │   └── WeatherRepository.java
+        │           └── service
+        │               └── WeatherService.java
+        └── resources
+            ├── application.properties
+            └── data.sql
+text```
+Сборка и запуск
+Требования
+Docker и Docker Compose
 
-## 1. Требования
-- Docker
-- Docker Compose
+JDK 17+
 
-## 2. Установка
-1. Клонируйте репозиторий:
+Maven 3.8+
+
+Инструкция
+bash
+# Клонирование и сборка
 git clone <ваш-репозиторий>
 cd <папка-проекта>
 
-2. Запустите приложение:
-docker-compose -f docker/docker-compose.yml up --build
-
-## 3. Использование
+# Запуск
+mvn clean package
+docker-compose -f docker/docker-compose.yml down
+docker-compose -f docker/docker-compose.yml up -d --build
 Приложение доступно по адресу: http://localhost
 
-Основные эндпоинты:
-- GET /ping    → "PONG" (HTML)
-- GET /health  → {"status": "HEALTHY"} (JSON)
-- GET /list    → список городов с температурой (HTML)
-- POST /add    → добавление нового города (параметры: city, temperature)
+Функционал проекта
+Основные методы API
+Метод	Путь	Описание
+GET	/health	Проверка работоспособности
+GET	/ping	Тестовый эндпоинт
+GET	/list	Список городов с температурами
+POST	/add	Добавление/обновление города
+DELETE	/delete	Удаление данных
+GET	/update	Обновление температур
+Проверка методов
+Через браузер
+http://localhost/ping
 
-## 4. Проверка работы
-Примеры запросов:
-curl http://localhost/ping
+http://localhost/list
+
+http://localhost/health
+
+Через curl
+bash
+# Health check
 curl http://localhost/health
-curl http://localhost/list
+
+# Добавить город
 curl -X POST -d "city=Moscow&temperature=25" http://localhost/add
 
-## 5. Дополнительно
-- Проверка БД: docker exec -it weather-postgres psql -U postgres -d weather_db
-- Логи: docker logs weather-backend
-- Остановка: docker-compose -f docker/docker-compose.yml down
+# Удалить все данные
+curl -X DELETE "http://localhost/delete?all=true"
+Postman
+Импортируйте коллекцию: docs/Weather-app.postman_collection.json
 
-Лицензия: MIT
+Подключение к PostgreSQL
+bash
+docker exec -it weather-postgres psql -U postgres -d weather_db
+Пример запросов:
+
+sql
+SELECT * FROM weather;
+DELETE FROM weather WHERE city = 'Paris';
+Дополнительная информация
+Логи
+Приложение: src/logs/weather-app.log
+
+Nginx: nginx/logs/access.log и error.log
+
+Управление сервисами
+bash
+# Остановка
+docker-compose -f docker/docker-compose.yml down
+
+# Просмотр логов
+docker logs weather-backend
+Лицензия: MIT (см. файл LICENSE)

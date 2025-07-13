@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.Map;
 
 @Slf4j
@@ -33,60 +32,44 @@ public class WeatherService {
     @PostConstruct
     @Scheduled(fixedRateString = "${weather.update.interval}")
     public void updateAllCities() {
-        log.info("Начато обновление данных о погоде для всех городов");
-        CITIES.keySet().forEach(city -> {
+        weatherRepo.findAll().forEach(weather -> {
             try {
-                updateCityWeather(city);
+                updateCityWeather(weather.getCity());
             } catch (Exception e) {
-                log.error("Ошибка при обновлении данных для города {}: {}", city, e.getMessage());
-                saveDefaultTemp(city);
+                log.error("Ошибка при обновлении города {}: {}", weather.getCity(), e.getMessage());
+                saveDefaultTemp(weather.getCity());
             }
         });
-        log.info("Обновление данных завершено");
     }
 
-    public void updateCityWeather(String city) {
-        log.debug("Обновление данных для города: {}", city);
-        double[] coords = CITIES.get(city);
-        if (coords == null) {
-            log.warn("Неизвестный город: {}", city);
-            throw new IllegalArgumentException("Unknown city");
-        }
-        
-        try {
-            double temp = fetchCurrentTemperature(coords[0], coords[1]);
-            weatherRepo.save(new Weather(city, (int) Math.round(temp)));
-            log.info("Данные для города {} успешно обновлены: {}°C", city, temp);
-        } catch (JsonProcessingException e) {
-            log.error("Ошибка парсинга JSON для города {}: {}", city, e.getMessage());
-            saveDefaultTemp(city);
-        } catch (Exception e) {
-            log.error("Неожиданная ошибка для города {}: {}", city, e.getMessage());
-            saveDefaultTemp(city);
-        }
-    }
-
-    private double fetchCurrentTemperature(double lat, double lon) throws JsonProcessingException {
-        String url = String.format("%s?latitude=%.2f&longitude=%.2f&current_weather=true", 
-                         API_URL, lat, lon);
-        log.debug("Запрос к API: {}", url);
-        
-        String response = new RestTemplate().getForObject(url, String.class);
-        JsonNode root = new ObjectMapper().readTree(response);
-        
-        return root.path("current_weather")
-                 .path("temperature")
-                 .asDouble();
+    private void updateCityWeather(String city) throws Exception {
+        double[] coords = getCityCoordinates(city);
+        double temperature = fetchCurrentTemperature(coords[0], coords[1]);
+        Weather weather = weatherRepo.findById(city).orElse(new Weather(city, 0));
+        weather.setTemperature((int) Math.round(temperature));
+        weatherRepo.save(weather);
     }
 
     private void saveDefaultTemp(String city) {
-        int temp = switch(city) {
-            case "Berlin" -> 18;
-            case "London" -> 20;
-            case "Paris" -> 15;
-            default -> 10;
-        };
-        weatherRepo.save(new Weather(city, temp));
-        log.warn("Использовано значение по умолчанию для города {}: {}°C", city, temp);
+        Weather weather = weatherRepo.findById(city).orElse(new Weather(city, 0));
+        weather.setTemperature(20); // Значение по умолчанию
+        weatherRepo.save(weather);
+    }
+
+    public double[] getCityCoordinates(String city) {
+        if (CITIES.containsKey(city)) {
+            return CITIES.get(city);
+        }
+        throw new IllegalArgumentException("Город не найден: " + city);
+    }
+
+    public double fetchCurrentTemperature(double latitude, double longitude) throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        String url = String.format("%s?latitude=%f&longitude=%f&current_weather=true", API_URL, latitude, longitude);
+        String response = restTemplate.getForObject(url, String.class);
+        
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(response);
+        return root.path("current_weather").path("temperature").asDouble();
     }
 }

@@ -1,0 +1,27 @@
+2025-07-13T02:52:45.210Z  INFO 14 --- [main] com.example.WeatherApp                   : Starting WeatherApp v1.0.0 using Java 17.0.15 with PID 14 (/app/app.jar started by root in /app)
+2025-07-13T02:52:45.214Z  INFO 14 --- [main] com.example.WeatherApp                   : No active profile set, falling back to 1 default profile: "default"
+2025-07-13T02:52:46.315Z  INFO 14 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-07-13T02:52:46.383Z  INFO 14 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 57 ms. Found 1 JPA repository interfaces.
+2025-07-13T02:52:47.035Z  INFO 14 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2025-07-13T02:52:47.045Z  INFO 14 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-07-13T02:52:47.048Z  INFO 14 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.8]
+2025-07-13T02:52:47.130Z  INFO 14 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-07-13T02:52:47.131Z  INFO 14 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1865 ms
+2025-07-13T02:52:47.253Z  INFO 14 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-07-13T02:52:47.423Z  INFO 14 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@7fd4acee
+2025-07-13T02:52:47.429Z  INFO 14 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-07-13T02:52:47.529Z  INFO 14 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-07-13T02:52:47.597Z  INFO 14 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.2.2.Final
+2025-07-13T02:52:47.600Z  INFO 14 --- [main] org.hibernate.cfg.Environment            : HHH000406: Using bytecode reflection optimizer
+2025-07-13T02:52:47.765Z  INFO 14 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-13T02:52:47.944Z  INFO 14 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-07-13T02:52:48.045Z  INFO 14 --- [main] org.hibernate.orm.dialect                : HHH035001: Using dialect: org.hibernate.dialect.PostgreSQLDialect, version: org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$DialectResolutionInfoImpl@535b8c24
+2025-07-13T02:52:48.240Z  INFO 14 --- [main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
+2025-07-13T02:52:48.753Z  INFO 14 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2025-07-13T02:52:48.835Z  INFO 14 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-07-13T02:52:51.171Z  WARN 14 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-07-13T02:52:51.764Z  INFO 14 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2025-07-13T02:52:51.777Z  INFO 14 --- [main] com.example.WeatherApp                   : Started WeatherApp in 7.119 seconds (process running for 7.693)
+2025-07-13T02:52:59.352Z  INFO 14 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-07-13T02:52:59.353Z  INFO 14 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-07-13T02:52:59.355Z  INFO 14 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms

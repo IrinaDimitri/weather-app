@@ -10,10 +10,10 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -28,57 +28,16 @@ public class WeatherController {
         this.weatherService = weatherService;
     }
 
-    @Operation(
-        summary = "Проверка сервера",
-        description = "Возвращает PONG для проверки работоспособности",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "Успешный ответ",
-                content = @Content(
-                    mediaType = "text/html",
-                    examples = @ExampleObject("<html><body><h1>PONG</h1></body></html>")
-                )
-            )
-        }
-    )
     @GetMapping(value = "/ping", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> ping() {
         return ResponseEntity.ok("<html><body><h1>PONG</h1></body></html>");
     }
 
-    @Operation(
-        summary = "Статус сервиса",
-        description = "Проверка состояния сервиса",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "Сервис работает",
-                content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject("{\"status\": \"HEALTHY\"}")
-                )
-            )
-        }
-    )
     @GetMapping(value = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("{\"status\": \"HEALTHY\"}");
     }
 
-    @Operation(
-        summary = "Список городов",
-        description = "Возвращает список городов с температурой",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "HTML со списком городов",
-                content = @Content(
-                    mediaType = "text/html"
-                )
-            )
-        }
-    )
     @GetMapping(value = "/list", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> list() {
         StringBuilder html = new StringBuilder("<html><body><ul>");
@@ -96,73 +55,139 @@ public class WeatherController {
         return ResponseEntity.ok(html.toString());
     }
 
-    @Operation(
-        summary = "Обновить данные",
-        description = "Обновляет данные о погоде для всех городов",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "Данные обновлены",
-                content = @Content(
-                    mediaType = "text/plain",
-                    examples = @ExampleObject("Weather data updated successfully")
-                )
-            )
-        }
-    )
     @GetMapping("/update")
     public ResponseEntity<String> updateWeather() {
-        weatherService.updateAllCities();
-        return ResponseEntity.ok("Weather data updated successfully");
+        try {
+            weatherService.updateAllCities();
+            return ResponseEntity.ok("Weather data updated successfully");
+        } catch (UnsupportedOperationException e) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .body("Weather update functionality is not implemented");
+        }
+    }
+
+    @PostMapping(value = "/add", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> add(
+        @RequestParam String city,
+        @RequestParam(required = false) Integer temperature,
+        @RequestParam(defaultValue = "false") boolean forceUpdate
+    ) {
+        if (city == null || city.trim().isEmpty() || !city.matches("[a-zA-Z\\s-]+")) {
+            return ResponseEntity.badRequest().body(
+                errorHtml("Название города должно содержать только буквы и дефисы.")
+            );
+        }
+
+        try {
+            int tempToSave;
+            String updateInfo = "";
+            
+            if (temperature != null) {
+                tempToSave = temperature;
+                updateInfo = "<p>Температура задана вручную. Для обновления используйте метод /update.</p>";
+            } else {
+                try {
+                    // Проверяем доступность сервиса
+                    if (weatherService == null) {
+                        throw new UnsupportedOperationException("Weather service not available");
+                    }
+                    tempToSave = 20; // Значение по умолчанию, если сервис не реализован
+                    updateInfo = "<p>Автоматическое получение температуры не реализовано. Используйте параметр temperature.</p>";
+                } catch (Exception e) {
+                    tempToSave = 20;
+                    updateInfo = "<p>Ошибка при получении температуры: " + e.getMessage() + "</p>";
+                }
+            }
+
+            if (weatherRepository.existsById(city) && !forceUpdate) {
+                return ResponseEntity.badRequest().body(
+                    errorHtml("Город \"" + city + "\" уже есть в базе. Используйте ?forceUpdate=true, чтобы обновить данные.")
+                );
+            }
+
+            weatherRepository.save(new Weather(city, tempToSave));
+
+            return ResponseEntity.ok(
+                "<html><body><h2>Успех!</h2>" +
+                "<p>Город \"" + escapeHtml(city) + "\" " + 
+                (forceUpdate ? "обновлен" : "добавлен") + 
+                " с температурой " + tempToSave + "°C.</p>" +
+                updateInfo +
+                "</body></html>"
+            );
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                errorHtml("Ошибка при сохранении данных: " + e.getMessage())
+            );
+        }
     }
 
     @Operation(
-        summary = "Добавить город",
-        description = "Добавляет новый город с температурой",
-        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Данные города",
-            required = true,
-            content = @Content(
-                mediaType = "application/x-www-form-urlencoded",
-                schema = @Schema(
-                    implementation = AddCityRequest.class
-                )
-            )
-        ),
+        summary = "Удалить город или все данные",
+        description = "Удаляет конкретный город или все данные из БД",
         responses = {
             @ApiResponse(
                 responseCode = "200",
-                description = "Город добавлен",
+                description = "Удаление выполнено",
                 content = @Content(
-                    mediaType = "text/html",
-                    examples = @ExampleObject("<html><body><p>Город добавлен!</p></body></html>")
+                    mediaType = "text/html"
                 )
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Неверные параметры запроса"
             )
         }
     )
-    @PostMapping(value = "/add", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> add(
-        @Parameter(description = "Название города", example = "Berlin") @RequestParam String city,
-        @Parameter(description = "Температура в градусах Цельсия", example = "20") @RequestParam int temperature
+    @DeleteMapping(value = "/delete", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> delete(
+        @RequestParam(required = false) String city,
+        @RequestParam(defaultValue = "false") boolean all
     ) {
-        Weather weather = new Weather(city, temperature);
-        weatherRepository.save(weather);
-        
-        return ResponseEntity.ok("<html><body><p>Город добавлен!</p></body></html>");
+        try {
+            if (all) {
+                weatherRepository.deleteAll();
+                return ResponseEntity.ok(
+                    successHtml("Все данные о погоде успешно удалены.")
+                );
+            }
+            
+            if (city == null || city.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                    errorHtml("Необходимо указать название города или параметр all=true")
+                );
+            }
+
+            if (!weatherRepository.existsById(city)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    errorHtml("Город \"" + city + "\" не найден в базе.")
+                );
+            }
+
+            weatherRepository.deleteById(city);
+
+            return ResponseEntity.ok(
+                successHtml("Город \"" + city + "\" успешно удален.")
+            );
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                errorHtml("Ошибка при удалении данных: " + e.getMessage())
+            );
+        }
+    }
+
+    private String successHtml(String message) {
+        return "<html><body><h2>Успех!</h2><p>" + escapeHtml(message) + "</p></body></html>";
+    }
+
+    private String errorHtml(String message) {
+        return "<html><body><h2>Ошибка!</h2><p>" + escapeHtml(message) + "</p></body></html>";
     }
 
     private String escapeHtml(String input) {
         return input.replace("&", "&amp;")
                    .replace("<", "&lt;")
                    .replace(">", "&gt;");
-    }
-
-    @Schema(description = "Модель запроса для добавления города")
-    private static class AddCityRequest {
-        @Schema(description = "Название города", example = "Berlin", required = true)
-        public String city;
-        
-        @Schema(description = "Температура в градусах Цельсия", example = "20", required = true)
-        public int temperature;
     }
 }
