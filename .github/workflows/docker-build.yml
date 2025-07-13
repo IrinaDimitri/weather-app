@@ -1,0 +1,134 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgres' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Maven Wrapper
+        run: |
+          if [ ! -f "mvnw" ]; then
+            mvn -N wrapper:wrapper -Dmaven=3.9.6
+          fi
+          chmod +x mvnw
+          ./mvnw --version
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            target/
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+
+      - name: Build Docker images
+        run: |
+          docker build -t weather-app -f docker/Dockerfile .
+          docker pull postgres:13-alpine
+
+      - name: Save Docker images
+        run: |
+          mkdir -p docker-images
+          docker save weather-app -o docker-images/backend.tar
+          docker save postgres:13-alpine -o docker-images/postgres.tar
+          ls -lh docker-images/
+
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: docker-images/*.tar
+          retention-days: 1
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: docker-images
+
+      - name: Load Docker images
+        run: |
+          docker load -i docker-images/backend.tar
+          docker load -i docker-images/postgres.tar
+          docker images
+
+      - name: Create network
+        run: docker network create weather-net
+
+      - name: Start Postgres
+        run: |
+          docker run -d --name postgres \
+            --network weather-net \
+            -e POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
+            -e POSTGRES_DB=weather_db \
+            -p 5432:5432 \
+            postgres:13-alpine
+          sleep 10  # время для инициализации Postgres
+
+      - name: Check Postgres readiness
+        run: |
+          docker run --rm --network weather-net postgres:13-alpine \
+            sh -c 'until pg_isready -h postgres -U postgres -t 30; do sleep 2; done'
+
+      - name: Start Backend
+        run: |
+          docker run -d --name backend \
+            --network weather-net \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weather_db \
+            -e SPRING_DATASOURCE_USERNAME=postgres \
+            -e SPRING_DATASOURCE_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
+            -p 8080:8080 \
+            weather-app
+          sleep 15  #время для старта Spring Boot
+
+      - name: Check Backend logs
+        run: docker logs backend
+
+      - name: Run health checks
+        run: |
+          echo "Testing backend connectivity..."
+          curl -v http://localhost:8080/health
+          curl -v http://localhost:8080/ping
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop backend postgres || true
+          docker rm backend postgres || true
+          docker network rm weather-net || true
