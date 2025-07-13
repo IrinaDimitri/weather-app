@@ -1,6 +1,0 @@
-com/example/controller/WeatherController.class
-com/example/repository/WeatherRepository.class
-com/example/service/WeatherService.class
-com/example/model/Weather.class
-com/example/WeatherApp.class
-com/example/config/SwaggerConfig.class
