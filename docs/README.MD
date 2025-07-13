@@ -55,6 +55,8 @@ Spring Boot приложение для управления данными о �
 - http://localhost/swagger-ui/index.html
 - http://localhost:8080/swagger-ui/index.html
 
+Также после сборки будет доступна OpenApi documentation: http://backend/v3/api-docs
+
 ## 🧪 Варианты тестирования
 1. В Postman. Файл коллекции: docs/Weather-app.postman_collection.json
 2. В браузере по прямым ссылкам http://localhost/{{method}}
