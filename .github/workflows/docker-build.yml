@@ -51,16 +51,16 @@ jobs:
       - name: Build with Maven
         run: ./mvnw clean package -DskipTests
 
-      - name: Build Docker containers
+      - name: Build Docker images
         run: |
-          docker-compose -f docker/docker-compose.yml build
-          docker images
+          docker build -t weather-app -f docker/Dockerfile .
+          docker pull postgres:13-alpine
 
       - name: Save Docker images
         run: |
           mkdir -p docker-images
-          docker save -o docker-images/backend.tar weather-app
-          docker save -o docker-images/postgres.tar postgres:13-alpine
+          docker save weather-app -o docker-images/backend.tar
+          docker save postgres:13-alpine -o docker-images/postgres.tar
           ls -lh docker-images/
 
       - name: Upload Docker images
@@ -86,11 +86,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Docker Compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-
       - name: Download Docker images
         uses: actions/download-artifact@v4
         with:
@@ -106,7 +101,7 @@ jobs:
       - name: Start backend
         run: |
           docker run -d --name weather-backend \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weather_db \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/weather_db \
             -e SPRING_DATASOURCE_USERNAME=postgres \
             -e SPRING_DATASOURCE_PASSWORD=${{ env.POSTGRES_PASSWORD }} \
             -p 8080:8080 \
@@ -117,7 +112,6 @@ jobs:
         run: |
           curl -s http://localhost:8080/health | jq .
           curl -s http://localhost:8080/ping
-          url -s http://localhost/ping
           pg_isready -h localhost -U postgres
 
       - name: Cleanup
