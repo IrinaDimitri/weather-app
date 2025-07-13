@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: CI/CD Pipeline
 
 on:
   push:
@@ -10,17 +10,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgres' }}
 
     steps:
+      # Шаг 1: Получение кода
       - uses: actions/checkout@v3
 
+      # Шаг 2: Установка Java
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      # Шаг 3: Кэширование Maven-зависимостей
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -28,37 +31,77 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
 
+      # Шаг 4: Сборка проекта
       - name: Build with Maven
         run: |
-          cd src
+          chmod +x mvnw
           ./mvnw clean package -DskipTests
 
-      - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      # Шаг 5: Сборка Docker-образов
+      - name: Build Docker containers
+        run: |
+          docker-compose -f docker/docker-compose.yml build
 
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: docker/Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/weather-app:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/weather-app:${{ github.sha }}
+      # Шаг 6: Сохранение образов
+      - name: Save Docker images
+        run: |
+          mkdir -p docker-images
+          docker save -o docker-images/backend.tar weather-app
+          docker save -o docker-images/postgres.tar postgres:13-alpine
+          ls -lh docker-images/
 
-  deploy:
+      # Шаг 7: Сохранение артефактов
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-images
+          path: docker-images/*.tar
+          retention-days: 1
+
+  test:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Deploy with Docker Compose
+      - name: Download Docker images
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-images
+
+      - name: Load Docker images
+        run: |
+          docker load -i docker-images/backend.tar
+          docker load -i docker-images/postgres.tar
+          docker images
+
+      - name: Start services
+        run: |
+          docker-compose -f docker/docker-compose.yml up -d
+          sleep 10  # Даем время для инициализации
+          docker-compose ps
+
+      - name: Run health checks
+        run: |
+          # Проверка backend
+          curl -s http://localhost:8080/health | jq .
+          curl -s http://localhost:8080/ping
+          
+          # Проверка PostgreSQL
+          docker-compose exec postgres pg_isready -U postgres
+
+      - name: Run integration tests
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/health)
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Health check failed: $RESPONSE"
+            exit 1
+          fi
+          echo "All tests passed!"
+
+      - name: Cleanup
+        if: always()
         run: |
           docker-compose -f docker/docker-compose.yml down
-          docker-compose -f docker/docker-compose.yml up -d --build
+          docker system prune -f
