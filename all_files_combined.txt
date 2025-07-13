@@ -1,30 +1,309 @@
 .
+├── .dockerignore
+├── .mvn
+│   └── wrapper
+│       └── maven-wrapper.properties
 ├── Makefile
 ├── all_files_combined.txt
-└── main
-    ├── java
-    │   └── com
-    │       └── example
-    │           ├── WeatherApp.java
-    │           ├── WeatherController.java
-    │           ├── config
-    │           │   └── SwaggerConfig.java
-    │           ├── model
-    │           │   └── Weather.java
-    │           ├── repository
-    │           │   └── WeatherRepository.java
-    │           └── service
-    │               └── WeatherService.java
-    └── resources
-        ├── application.properties
-        └── data.sql
+├── docker
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── nginx
+│   └── nginx.conf
+├── pom.xml
+└── src
+    └── main
+        ├── java
+        │   └── com
+        │       └── example
+        │           ├── WeatherApp.java
+        │           ├── WeatherController.java
+        │           ├── config
+        │           │   └── SwaggerConfig.java
+        │           ├── model
+        │           │   └── Weather.java
+        │           ├── repository
+        │           │   └── WeatherRepository.java
+        │           └── service
+        │               └── WeatherService.java
+        └── resources
+            ├── application.properties
+            └── data.sql
 
-9 directories, 10 files
+14 directories, 16 files
 
 
 === FILE CONTENTS ===
 
-FILE: ./main/java/com/example/config/SwaggerConfig.java
+FILE: ./docker/docker-compose.yml
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: weather-app
+    container_name: weather-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE-PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      LOGGING_FILE_NAME: /app/logs/weather-app.log
+    networks:
+      - weather-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    entrypoint: ["sh", "-c", "sleep 15 && java -jar app.jar"]
+    volumes:
+      - ../src/logs:/app/logs
+
+  postgres:
+    image: postgres:13-alpine
+    container_name: weather-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: weather_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - weather-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.23-alpine
+    container_name: weather-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ../nginx/logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - weather-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres-data:
+
+networks:
+  weather-net:
+    driver: bridge
+FILE: ./docker/Dockerfile
+# Сборка с образом Maven
+FROM maven:3.8.7-eclipse-temurin-17 AS builder
+
+WORKDIR /app
+
+# POM для кэширования зависимостей
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+COPY src ./src
+
+# Сброка проекта
+RUN mvn clean package -DskipTests -B
+
+# Финальный образ с JRE
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+
+COPY --from=builder /app/target/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+FILE: ./Makefile
+ALL: run
+.PHONY: run stop
+
+run:
+	@echo "🚀 Запуск приложения..."
+	
+	# Проверка доступности Docker
+	@if ! docker info >/dev/null 2>&1; then \
+		echo "🛑 Docker Desktop не запущен!"; \
+		echo "1. Запустите Docker Desktop"; \
+		echo "2. Включите WSL2 интеграцию в настройках"; \
+		exit 1; \
+	fi
+	
+	mvn clean package
+	docker-compose -f docker/docker-compose.yml down
+	docker compose -f docker/docker-compose.yml up -d --build
+	@echo "✅ Приложение запущено"
+
+stop:
+	@echo "🛑 Остановка приложения..."
+	docker compose -f docker/docker-compose.yml down
+	mvn clean
+	@find . -type f -name "*.log" -exec sh -c 'echo -n > "{}"' \;
+	@echo "✅ Приложение остановлено"
+
+db: 
+	docker exec -it weather-postgres psql -U postgres -d weather_db
+FILE: ./nginx/nginx.conf
+# Определение группы серверов для балансировки нагрузки
+upstream backend {
+    server weather-backend:8080; #Проксирует на backend-контейнер
+}
+
+server {
+    listen 80;# Слушает 80 порт
+    server_name localhost; #Домен сервера
+    access_log /var/log/nginx/access.log; # Лог доступа
+    error_log /var/log/nginx/error.log; # Лог ошибок
+    location / { 
+        proxy_pass http://backend;# Перенаправление на backend
+        proxy_set_header Host $host;# Оригинальный хост
+        proxy_set_header X-Real-IP $remote_addr;# Реальный IP клиента
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Цепочка прокси
+        proxy_set_header X-Forwarded-Proto $scheme;#Оригинальный протокол (http/https)
+        proxy_connect_timeout 60s;# Таймаут подключения
+        proxy_read_timeout 60s; #Таймаут чтения
+    }
+
+    location /swagger-ui/ {
+        proxy_pass http://backend/swagger-ui/; 
+    }
+
+    location /v3/api-docs {
+        proxy_pass http://backend/v3/api-docs; 
+    }
+}
+FILE: ./pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>weather-app</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Weather Application</name>
+    <description>Spring Boot Weather App</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Базовые зависимости Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        
+        <!-- База данных -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Логирование -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Работа с JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Для аннотаций -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <!-- Для разработки -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Swagger -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+        </dependency>       
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <resources>
+                        <resource>
+                            <directory>src/main/resources</directory>
+                            <filtering>true</filtering>
+                        </resource>
+                        <resource>
+                            <directory>src/logs</directory>
+                            <targetPath>${project.build.outputDirectory}/logs</targetPath>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+FILE: ./src/main/java/com/example/config/SwaggerConfig.java
 package com.example.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
@@ -53,17 +332,13 @@ import org.springframework.context.annotation.Configuration;
         @Server(
             url = "http://localhost:8080",
             description = "Локальный сервер"
-        ),
-        @Server(
-            url = "http://api.weather.example.com",
-            description = "Продакшен сервер"
         )
     }
 )
 public class SwaggerConfig {
 }
 
-FILE: ./main/java/com/example/model/Weather.java
+FILE: ./src/main/java/com/example/model/Weather.java
 package com.example.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -89,7 +364,6 @@ public class Weather {
         this.temperature = temperature;
     }
 
-    // Геттеры и сеттеры остаются без изменений
     public String getCity() {
         return city;
     }
@@ -106,7 +380,7 @@ public class Weather {
         this.temperature = temperature;
     }
 }
-FILE: ./main/java/com/example/repository/WeatherRepository.java
+FILE: ./src/main/java/com/example/repository/WeatherRepository.java
 package com.example.repository;
 
 import com.example.model.Weather;
@@ -114,7 +388,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface WeatherRepository extends JpaRepository<Weather, String> {
 }
-FILE: ./main/java/com/example/service/WeatherService.java
+FILE: ./src/main/java/com/example/service/WeatherService.java
 package com.example.service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.slf4j.Logger;
@@ -255,7 +529,7 @@ public class WeatherService {
     }
 }
 
-FILE: ./main/java/com/example/WeatherApp.java
+FILE: ./src/main/java/com/example/WeatherApp.java
 package com.example;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -266,7 +540,7 @@ public class WeatherApp {
         SpringApplication.run(WeatherApp.class, args);
     }
 }
-FILE: ./main/java/com/example/WeatherController.java
+FILE: ./src/main/java/com/example/WeatherController.java
 package com.example.controller;
 
 import com.example.model.Weather;
@@ -409,53 +683,6 @@ public class WeatherController {
         }
     }
 
-    // @Operation(
-    //     summary = "Обновить данные о погоде для города",
-    //     description = "Обновляет данные о погоде для указанного города из внешнего API и сохраняет в базе данных.",
-    //     responses = {
-    //         @ApiResponse(
-    //             responseCode = "200",
-    //             description = "Данные о погоде успешно обновлены",
-    //             content = @Content(mediaType = "application/json")
-    //         ),
-    //         @ApiResponse(
-    //             responseCode = "404",
-    //             description = "Город не найден в базе данных и/или в Open Weather API",
-    //             content = @Content(mediaType = "application/json")
-    //         )
-    //     }
-    // )
-
-    // @PostMapping(value = "/update", produces = MediaType.TEXT_HTML_VALUE)
-    // public ResponseEntity<String> updateWeather(
-    //     @RequestParam(required = false) String city
-    // ) {
-    //     log.info("Запрос обновления данных о погоде для города: {}", city);
-    //     try {
-    //         if (city == null || city.trim().isEmpty()) {
-    //             weatherService.updateAllCities();
-    //             return ResponseEntity.ok(
-    //                 "<html><body><h2>Успех!</h2><p>Данные о погоде для всех городов успешно обновлены.</p></body></html>");
-    //         } else {
-    //             boolean updated = weatherService.updateCityWeather(city);
-    //             if (!updated) {
-    //                 String msg = "Город \"" + city + "\" не найден в базе данных.";
-    //                 log.warn(msg);
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-    //                         .body(errorHtml(msg));
-    //             }
-    //             log.info("Данные о погоде для города {} успешно обновлены", city);
-    //             return ResponseEntity.ok(
-    //                 "<html><body><h2>Успех!</h2><p>Данные о погоде для города \"" + escapeHtml(city) + "\" успешно обновлены.</p></body></html>");
-    //         }
-    //     } catch (Exception e) {
-    //         String errorMsg = "Внутренняя ошибка сервера при обновлении данных: " + e.getMessage();
-    //         log.error(errorMsg, e);
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-    //                 .body(errorHtml(errorMsg));
-    //     }
-    // }
-
     @DeleteMapping(value = "/delete", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> delete(
         @RequestParam(required = false) String city,
@@ -508,7 +735,7 @@ public class WeatherController {
     }
 }
 
-FILE: ./main/resources/application.properties
+FILE: ./src/main/resources/application.properties
 spring.jpa.hibernate.ddl-auto=update
 logging.file.name=/app/logs/weather-app.log
 spring.datasource.url=jdbc:postgresql://localhost:5432/weather_db
@@ -517,7 +744,7 @@ spring.datasource.password=postgres
 spring.jpa.show-sql=true
 spring.sql.init.mode=always
 
-FILE: ./main/resources/data.sql
+FILE: ./src/main/resources/data.sql
 CREATE TABLE IF NOT EXISTS weather (
     city TEXT PRIMARY KEY,
     temperature INT
@@ -528,5 +755,3 @@ INSERT INTO weather (city, temperature) VALUES
   ('London', 20), 
   ('Paris', 15), 
   ('Moscow', 17);
-
-FILE: ./Makefile

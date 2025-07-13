@@ -6,28 +6,30 @@ Spring Boot приложение для управления данными о �
 ---
 ## 📦 Структура проекта
 ```text
-📦 project-root
-├── 🐳 docker/
-│   ├── 🐋 Dockerfile
-│   └── 🐙 docker-compose.yml
-├── 📚 docs/
-│   ├── 📝 README.md
-│   └── 🚀 Weather-app.postman_collection.json
-├── 🔒 nginx/
-│   ├── 📜 logs/
-│   └── ⚙️ nginx.conf
-├── 💻 src/
-│   ├── 📜 logs/weather-app.log
-│   └── ☕ main/java/com/example/
-│       ├── 🏗️ WeatherApp.java
-│       ├── 🎮 WeatherController.java
-│       ├── ⚙️ config/SwaggerConfig.java
-│       ├── 🧩 model/Weather.java
-│       ├── 🗄️ repository/WeatherRepository.java
-│       └── ⚡ service/WeatherService.java
-├── ⚙️ application.properties
-├── 🗃️ data.sql
-└── 📦 pom.xml
+📦 weather-app
+├── 🐳 .dockerignore          # Игнорируемые файлы для Docker
+├── 🧰 .mvn/wrapper/          # Настройки Maven Wrapper
+│   └── ⚙️ maven-wrapper.properties
+├── 🏗️ Makefile               # Автоматизация сборки
+├── 📜 all_files_combined.txt # (опционально) Объединённый лог
+├── 🐋 docker/                # Docker-конфигурации
+│   ├── 🐳 Dockerfile         # Образ приложения
+│   └── 🧩 docker-compose.yml # Оркестрация сервисов
+├── 🔐 nginx/                # Nginx прокси
+│   └── ⚙️ nginx.conf        # Конфиг маршрутизации
+├── 📦 pom.xml               # Зависимости Maven
+└── 📂 src/main/
+    ├── ☕ java/com/example/
+    │   ├── 🚀 WeatherApp.java       # Главный класс
+    │   ├── 🎮 WeatherController.java # REST API
+    │   ├── ⚙️ config/
+    │   │   └️ 📘 SwaggerConfig.java  # Документация
+    │   ├️ 🧩 model/Weather.java      # Сущность данных
+    │   ├️ 🗄️ repository/WeatherRepository.java # Доступ к БД
+    │   └️ ⚡ service/WeatherService.java # Бизнес-логика
+    └️ 📁 resources/
+        ├️ ⚙️ application.properties # Настройки Spring
+        └️ 🗃️ data.sql              # Инициализация БД
 ```
 
 ## ⚙️ Запуск проекта
@@ -39,7 +41,7 @@ Spring Boot приложение для управления данными о �
 - PostgreSQL база данных (локально или через Docker).
 
 ### Сборка проекта
-В корневой директории проекта запустите команду:
+Для запуска или рестарта в корневой директории проекта запустите команду:
 ```bash
 make
 ```
@@ -48,6 +50,11 @@ make
 make stop
 ```
 Приложение будет доступно по адресам: http://localhost:8080 И через прокси http://localhost/
+
+Вывести список всех доступных команд make можно с корневой директории проекта запросом
+```bash
+make shelp
+```
 
 # 🌐 Доступные эндпоинты
 
@@ -160,7 +167,6 @@ make stop
 
 > **ℹ️ Правила:**
 > - Должен быть указан хотя бы один параметр.
-> - Нельзя одновременно использовать `city` и `all=true`.
 
 ### Коды ответов:
 | Код   | Описание                               | Content-Type   | Пример ответа                                                                                                    |
@@ -197,6 +203,12 @@ docker ps
 ```
 
 Убедитесь, что контейнер с именем `weather-postgres` отображается в списке.
+
+Запустить команду из корневой директории:
+```bash
+make db
+```
+В этом случае для выхода из weather_db=# нажмите \q
 
 ### 1.2 Подключиться напрямую к PostgreSQL из контейнера
 
@@ -251,30 +263,25 @@ SELECT * FROM weather;
 ### 3.1 Добавить новую запись
 
 ```sql
-INSERT INTO weather (city, temperature, condition, created_at)
-VALUES ('Kazan', 24.5, 'Sunny', NOW());
+INSERT INTO weather (city, temperature) VALUES ('Kazan', 24);
 ```
 
 ### 3.2 Удалить запись по идентификатору
 
 ```sql
-DELETE FROM weather
-WHERE id = 1;
+DELETE FROM weather WHERE city = 'Kazan';
 ```
 
 ### 3.3 Обновить данные по условию
 
 ```sql
-UPDATE weather
-SET temperature = 27.0, condition = 'Cloudy'
-WHERE city = 'Kazan';
+UPDATE weather SET temperature = 27 WHERE city = 'Kazan';
 ```
 
 ### 3.4 Найти записи с температурой выше определенного значения
 
 ```sql
-SELECT * FROM weather
-WHERE temperature > 25;
+SELECT * FROM weather WHERE temperature > 25;
 ```
 
 ---
@@ -294,17 +301,6 @@ exit
 ```
 
 ---
-
-## 5. Примечание
-
-Если при запуске Docker-контейнера используется файл `data.sql`, таблицы и данные должны автоматически загружаться в базу данных `weather_db`.
-
-Проверь их наличие с помощью:
-
-```sql
-\dt
-SELECT * FROM weather;
-```
 ## 🗂️ Где хранятся данные
 
 Данные о городах и их температурах хранятся в базе данных PostgreSQL, которая запускается в контейнере Docker. Изначально при первом запуске приложения, данные городов создаются через скрипт **`data.sql`**, который находится в папке **`src/main/resources`**.
@@ -336,36 +332,32 @@ INSERT INTO weather (city, temperature) VALUES
 
 Пример конфигурации NGINX:
 ```nginx
+# Определение группы серверов для балансировки нагрузки
 upstream backend {
-    server weather-backend:8080;
+    server weather-backend:8080; #Проксирует на backend-контейнер
 }
 
 server {
-    listen 80;
-    server_name localhost;
-
-    location / {
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location = /ping {
-        proxy_pass http://backend/ping;
-    }
-
-    location = /health {
-        proxy_pass http://backend/health;
+    listen 80;# Слушает 80 порт
+    server_name localhost; #Домен сервера
+    access_log /var/log/nginx/access.log; # Лог доступа
+    error_log /var/log/nginx/error.log; # Лог ошибок
+    location / { 
+        proxy_pass http://backend;# Перенаправление на backend
+        proxy_set_header Host $host;# Оригинальный хост
+        proxy_set_header X-Real-IP $remote_addr;# Реальный IP клиента
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Цепочка прокси
+        proxy_set_header X-Forwarded-Proto $scheme;#Оригинальный протокол (http/https)
+        proxy_connect_timeout 60s;# Таймаут подключения
+        proxy_read_timeout 60s; #Таймаут чтения
     }
 
     location /swagger-ui/ {
-        proxy_pass http://backend/swagger-ui/;
+        proxy_pass http://backend/swagger-ui/; 
     }
 
     location /v3/api-docs {
-        proxy_pass http://backend/v3/api-docs;
+        proxy_pass http://backend/v3/api-docs; 
     }
 }
 ```
@@ -452,21 +444,22 @@ nginx/logs/
 | Запрос (на порт 80)        | Проксируется на backend         | Комментарий                          |
 |---------------------------|----------------------------------|--------------------------------------|
 | `/`                       | `http://backend/`               | Главная страница, интерфейс          |
-| `/ping`                   | `http://backend/ping`           | Проверка состояния сервиса           |
-| `/health`                 | `http://backend/health`         | JSON-индикатор работоспособности     |
+ JSON-индикатор работоспособности     |
 | `/swagger-ui/`            | `http://backend/swagger-ui/`    | Swagger-документация                 |
 | `/v3/api-docs`            | `http://backend/v3/api-docs`    | OpenAPI спецификация                 |
 
 Всё это происходит благодаря следующей директиве в `nginx.conf`:
 
 ```nginx
-location / {
-    proxy_pass http://backend;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
+    location / { 
+        proxy_pass http://backend;# Перенаправление на backend
+        proxy_set_header Host $host;# Оригинальный хост
+        proxy_set_header X-Real-IP $remote_addr;# Реальный IP клиента
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Цепочка прокси
+        proxy_set_header X-Forwarded-Proto $scheme;#Оригинальный протокол (http/https)
+        proxy_connect_timeout 60s;# Таймаут подключения
+        proxy_read_timeout 60s; #Таймаут чтения
+    }
 ```
 
 ---
