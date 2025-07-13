@@ -14,8 +14,6 @@ Spring Boot приложение для управления данными о �
 
 ### Сборка JAR
     mvn clean package
-    Запуск через Docker Compose
-    bash
     docker-compose -f docker/docker-compose.yml down
     docker-compose -f docker/docker-compose.yml up -d --build
 
@@ -223,9 +221,28 @@ REST API:
     
     curl -X DELETE "http://localhost/delete?all=true
 
+## 🛠 Проверка подключения к PostgreSQL
+1. Открыть лог контейнера
+
+    docker logs <название_контейнера_postgres>
+2. Подключиться вручную:
+
+    docker exec -it <название_контейнера_postgres> psql -U postgres
+
+ИЛИ 
+    
+    docker exec -it weather-db psql -U weather -d weather
+
+3. Проверить подключение:
+
+    \c weather_db
+
+    \dt
+    
+    SELECT * FROM weather;
+
 ## 📦 Структура проекта
 
-### Альтернативный вариант с подсветкой:
 ```text
 📦 project-root
 ├── 🐳 docker/
