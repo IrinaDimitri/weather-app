@@ -4,11 +4,8 @@ import com.example.model.Weather;
 import com.example.repository.WeatherRepository;
 import com.example.service.WeatherService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,7 +16,7 @@ import java.util.List;
 @RestController
 @Tag(name = "Weather API", description = "Управление данными о погоде")
 public class WeatherController {
-    
+
     private final WeatherRepository weatherRepository;
     private final WeatherService weatherService;
 
@@ -55,17 +52,23 @@ public class WeatherController {
         return ResponseEntity.ok(html.toString());
     }
 
-    @GetMapping("/update")
-    public ResponseEntity<String> updateWeather() {
-        try {
-            weatherService.updateAllCities();
-            return ResponseEntity.ok("Weather data updated successfully");
-        } catch (UnsupportedOperationException e) {
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-                .body("Weather update functionality is not implemented");
+    @Operation(
+        summary = "Добавить или обновить данные о погоде",
+        description = "Добавляет новый город или обновляет данные о погоде существующего города в базе данных",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Данные успешно добавлены/обновлены",
+                content = @Content(
+                    mediaType = "text/html"
+                )
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Неверные параметры запроса"
+            )
         }
-    }
-
+    )
     @PostMapping(value = "/add", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> add(
         @RequestParam String city,
@@ -186,8 +189,11 @@ public class WeatherController {
     }
 
     private String escapeHtml(String input) {
+        if (input == null) {
+            return "";
+        }
         return input.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;");
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;");
     }
 }
