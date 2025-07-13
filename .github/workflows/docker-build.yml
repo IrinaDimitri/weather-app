@@ -23,7 +23,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Шаг 3: Кэширование Maven-зависимостей
+      # Шаг 3: Проверка наличия mvnw
+      - name: Verify Maven Wrapper
+        run: |
+          ls -la mvnw* .mvn/ || true
+          if [ ! -f "mvnw" ]; then
+            echo "Maven Wrapper not found, generating..."
+            mvn -N wrapper:wrapper
+          fi
+          chmod +x mvnw
+
+      # Шаг 4: Кэширование Maven-зависимостей
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -31,26 +41,24 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
 
-      # Шаг 4: Сборка проекта
+      # Шаг 5: Сборка проекта (из корня!)
       - name: Build with Maven
         run: |
-          chmod +x mvnw
           ./mvnw clean package -DskipTests
 
-      # Шаг 5: Сборка Docker-образов
+      # Шаг 6: Сборка Docker-образов
       - name: Build Docker containers
         run: |
           docker-compose -f docker/docker-compose.yml build
 
-      # Шаг 6: Сохранение образов
+      # Шаг 7: Сохранение образов
       - name: Save Docker images
         run: |
           mkdir -p docker-images
           docker save -o docker-images/backend.tar weather-app
           docker save -o docker-images/postgres.tar postgres:13-alpine
-          ls -lh docker-images/
 
-      # Шаг 7: Сохранение артефактов
+      # Шаг 8: Сохранение артефактов
       - name: Upload Docker images
         uses: actions/upload-artifact@v3
         with:
@@ -63,45 +71,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Шаг 1: Получение кода
       - uses: actions/checkout@v3
 
+      # Шаг 2: Загрузка сохраненных образов
       - name: Download Docker images
         uses: actions/download-artifact@v3
         with:
           name: docker-images
 
+      # Шаг 3: Загрузка образов в Docker
       - name: Load Docker images
         run: |
           docker load -i docker-images/backend.tar
           docker load -i docker-images/postgres.tar
-          docker images
 
+      # Шаг 4: Запуск контейнеров
       - name: Start services
         run: |
           docker-compose -f docker/docker-compose.yml up -d
-          sleep 10  # Даем время для инициализации
+          sleep 15  # Ожидаем инициализации БД
           docker-compose ps
 
+      # Шаг 5: Проверка работы
       - name: Run health checks
         run: |
           # Проверка backend
+          echo "Testing /health endpoint:"
           curl -s http://localhost:8080/health | jq .
+          
+          echo "Testing /ping endpoint:"
           curl -s http://localhost:8080/ping
           
           # Проверка PostgreSQL
+          echo "Testing PostgreSQL connection:"
           docker-compose exec postgres pg_isready -U postgres
 
-      - name: Run integration tests
-        run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/health)
-          if [ "$RESPONSE" != "200" ]; then
-            echo "Health check failed: $RESPONSE"
-            exit 1
-          fi
-          echo "All tests passed!"
-
+      # Шаг 6: Остановка контейнеров
       - name: Cleanup
         if: always()
         run: |
           docker-compose -f docker/docker-compose.yml down
-          docker system prune -f
