@@ -167,7 +167,7 @@ Spring Boot приложение для управления данными о �
 | Способ    | Команда / URL                        |
 |-----------|--------------------------------------|
 | Terminal  | `curl http://localhost/update`       |
-| REST API  | `GET http://localhost/update`        |
+| REST API  | `POST http://localhost/update`        |
 | Browser   | `http://localhost/update`            |
 
 ---
