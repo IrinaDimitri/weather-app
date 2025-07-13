@@ -3,4 +3,8 @@ CREATE TABLE IF NOT EXISTS weather (
     temperature INT
 );
 
-INSERT INTO weather (city, temperature) VALUES ('London', 20), ('Paris', 15);
+DELETE FROM weather;
+INSERT INTO weather (city, temperature) VALUES 
+  ('London', 20), 
+  ('Paris', 15), 
+  ('Moscow', 17);

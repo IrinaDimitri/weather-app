@@ -65,7 +65,7 @@
 					"urlencoded": []
 				},
 				"url": {
-					"raw": "http://localhost/add?city=Paris&temperature=19",
+					"raw": "http://localhost/add?city=Kazan&temperature=19&forceUpdate=true",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -76,7 +76,7 @@
 					"query": [
 						{
 							"key": "city",
-							"value": "Paris"
+							"value": "Kazan"
 						},
 						{
 							"key": "temperature",
@@ -84,8 +84,7 @@
 						},
 						{
 							"key": "forceUpdate",
-							"value": "true",
-							"disabled": true
+							"value": "true"
 						}
 					]
 				},
