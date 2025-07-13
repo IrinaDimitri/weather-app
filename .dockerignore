@@ -1,0 +1,14 @@
+.git/
+.idea/
+*.iml
+*.log
+*.swp
+*.bak
+*.tmp
+
+target/
+!target/*.jar 
+
+src/test/
+src/main/resources/application-dev.properties
+*.md

@@ -1,0 +1,741 @@
+-e 
+FILE: LICENSE
+MIT License
+
+Copyright (c) 2025 Irina Dimitrieva
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-e 
+-----
+-e 
+FILE: docker/docker-compose.yml
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: weather-app
+    container_name: weather-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/weather_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE-PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      LOGGING_FILE_NAME: /app/logs/weather-app.log
+    networks:
+      weather-net:
+        aliases:
+          - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: ["sh", "-c", "sleep 15 && java -jar app.jar"]
+    volumes:
+      - ../src/logs:/app/logs
+
+  postgres:
+    image: postgres:13-alpine
+    container_name: weather-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: weather_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      weather-net:
+        aliases:
+          - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.23-alpine
+    container_name: weather-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ../nginx/logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - weather-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  weather-net:
+    driver: bridge
+    name: weather-app-network-e 
+-----
+-e 
+FILE: docker/Dockerfile
+# Этап сборки
+FROM eclipse-temurin:17-jdk-jammy AS builder
+WORKDIR /app
+
+# Копируем ВСЕ файлы (включая mvnw, pom.xml)
+COPY . .
+
+# Даем права на выполнение mvnw
+RUN chmod +x mvnw && \
+    ./mvnw clean package -DskipTests
+
+# Этап запуска
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+COPY --from=builder /app/target/weather-app-*.jar app.jar
+CMD ["java", "-jar", "app.jar"]-e 
+-----
+-e 
+FILE: docker/postgres.env
+POSTGRES_PASSWORD=your_strong_password-e 
+-----
+-e 
+FILE: docs/README.MD
+# Weather Application
+
+Простое веб-приложение для отображения данных о погоде с PostgreSQL, Nginx и Docker Compose.
+
+## Содержание
+1. Требования
+2. Установка
+3. Использование
+4. Проверка работы
+5. Дополнительно
+
+## 1. Требования
+- Docker
+- Docker Compose
+
+## 2. Установка
+1. Клонируйте репозиторий:
+git clone <ваш-репозиторий>
+cd <папка-проекта>
+
+2. Запустите приложение:
+docker-compose -f docker/docker-compose.yml up --build
+
+## 3. Использование
+Приложение доступно по адресу: http://localhost
+
+Основные эндпоинты:
+- GET /ping    → "PONG" (HTML)
+- GET /health  → {"status": "HEALTHY"} (JSON)
+- GET /list    → список городов с температурой (HTML)
+- POST /add    → добавление нового города (параметры: city, temperature)
+
+## 4. Проверка работы
+Примеры запросов:
+curl http://localhost/ping
+curl http://localhost/health
+curl http://localhost/list
+curl -X POST -d "city=Moscow&temperature=25" http://localhost/add
+
+## 5. Дополнительно
+- Проверка БД: docker exec -it weather-postgres psql -U postgres -d weather_db
+- Логи: docker logs weather-backend
+- Остановка: docker-compose -f docker/docker-compose.yml down
+
+Лицензия: MIT-e 
+-----
+-e 
+FILE: nginx/logs/access.log
+-e 
+-----
+-e 
+FILE: nginx/logs/error.log
+-e 
+-----
+-e 
+FILE: nginx/nginx.conf
+upstream backend {
+    server weather-backend:8080;
+}
+
+server {
+    listen 80;
+    server_name localhost;
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    location = /ping {
+        proxy_pass http://backend/ping;
+    }
+
+    location /swagger-ui/ {
+        proxy_pass http://backend/swagger-ui/;
+    }
+
+    location /v3/api-docs {
+        proxy_pass http://backend/v3/api-docs;
+    }
+}-e 
+-----
+-e 
+FILE: pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>weather-app</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Weather Application</name>
+    <description>Spring Boot Weather App</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Базовые зависимости Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        
+        <!-- База данных -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Логирование -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-logging</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Работа с JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Для аннотаций -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <!-- Для разработки -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Swagger -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+        </dependency>       
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <resources>
+                        <resource>
+                            <directory>src/main/resources</directory>
+                            <filtering>true</filtering>
+                        </resource>
+                        <resource>
+                            <directory>src/logs</directory>
+                            <targetPath>${project.build.outputDirectory}/logs</targetPath>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>-e 
+-----
+-e 
+FILE: src/logs/weather-app.log
+-e 
+-----
+-e 
+FILE: src/main/java/com/example/config/SwaggerConfig.java
+package com.example.config;
+
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.info.Contact;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.info.License;
+import io.swagger.v3.oas.annotations.servers.Server;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@OpenAPIDefinition(
+    info = @Info(
+        title = "Weather API",
+        version = "3.0.2",
+        description = "API для управления данными о погоде",
+        contact = @Contact(
+            name = "Irina Dimitrieva",
+            email = "irina@example.com"
+        ),
+        license = @License(
+            name = "MIT License",
+            url = "https://opensource.org/licenses/MIT"
+        )
+    ),
+    servers = {
+        @Server(
+            url = "http://localhost:8080",
+            description = "Локальный сервер"
+        ),
+        @Server(
+            url = "http://api.weather.example.com",
+            description = "Продакшен сервер"
+        )
+    }
+)
+public class SwaggerConfig {
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/model/Weather.java
+package com.example.model;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "weather")
+@Schema(description = "Модель данных о погоде в городе")
+public class Weather {
+    @Id
+    @Schema(description = "Название города", example = "Berlin")
+    private String city;
+    
+    @Schema(description = "Температура в градусах Цельсия", example = "20")
+    private int temperature;
+
+    public Weather() {}
+
+    public Weather(String city, int temperature) {
+        this.city = city;
+        this.temperature = temperature;
+    }
+
+    // Геттеры и сеттеры остаются без изменений
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public int getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(int temperature) {
+        this.temperature = temperature;
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/repository/WeatherRepository.java
+package com.example.repository;
+
+import com.example.model.Weather;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface WeatherRepository extends JpaRepository<Weather, String> {
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/service/WeatherService.java
+package com.example.service;
+
+import com.example.model.Weather;
+import com.example.repository.WeatherRepository;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.Map;
+
+@Slf4j
+@Service
+public class WeatherService {
+    private static final String API_URL = "https://api.open-meteo.com/v1/forecast";
+    private final WeatherRepository weatherRepo;
+    
+    private static final Map<String, double[]> CITIES = Map.of(
+        "Berlin", new double[]{52.52, 13.41},
+        "London", new double[]{51.51, -0.13},
+        "Paris", new double[]{48.85, 2.35}
+    );
+
+    @Autowired
+    public WeatherService(WeatherRepository weatherRepo) {
+        this.weatherRepo = weatherRepo;
+    }
+
+    @PostConstruct
+    @Scheduled(fixedRateString = "${weather.update.interval}")
+    public void updateAllCities() {
+        log.info("Начато обновление данных о погоде для всех городов");
+        CITIES.keySet().forEach(city -> {
+            try {
+                updateCityWeather(city);
+            } catch (Exception e) {
+                log.error("Ошибка при обновлении данных для города {}: {}", city, e.getMessage());
+                saveDefaultTemp(city);
+            }
+        });
+        log.info("Обновление данных завершено");
+    }
+
+    public void updateCityWeather(String city) {
+        log.debug("Обновление данных для города: {}", city);
+        double[] coords = CITIES.get(city);
+        if (coords == null) {
+            log.warn("Неизвестный город: {}", city);
+            throw new IllegalArgumentException("Unknown city");
+        }
+        
+        try {
+            double temp = fetchCurrentTemperature(coords[0], coords[1]);
+            weatherRepo.save(new Weather(city, (int) Math.round(temp)));
+            log.info("Данные для города {} успешно обновлены: {}°C", city, temp);
+        } catch (JsonProcessingException e) {
+            log.error("Ошибка парсинга JSON для города {}: {}", city, e.getMessage());
+            saveDefaultTemp(city);
+        } catch (Exception e) {
+            log.error("Неожиданная ошибка для города {}: {}", city, e.getMessage());
+            saveDefaultTemp(city);
+        }
+    }
+
+    private double fetchCurrentTemperature(double lat, double lon) throws JsonProcessingException {
+        String url = String.format("%s?latitude=%.2f&longitude=%.2f&current_weather=true", 
+                         API_URL, lat, lon);
+        log.debug("Запрос к API: {}", url);
+        
+        String response = new RestTemplate().getForObject(url, String.class);
+        JsonNode root = new ObjectMapper().readTree(response);
+        
+        return root.path("current_weather")
+                 .path("temperature")
+                 .asDouble();
+    }
+
+    private void saveDefaultTemp(String city) {
+        int temp = switch(city) {
+            case "Berlin" -> 18;
+            case "London" -> 20;
+            case "Paris" -> 15;
+            default -> 10;
+        };
+        weatherRepo.save(new Weather(city, temp));
+        log.warn("Использовано значение по умолчанию для города {}: {}°C", city, temp);
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/WeatherApp.java
+package com.example;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class WeatherApp {
+    public static void main(String[] args) {
+        SpringApplication.run(WeatherApp.class, args);
+    }
+}-e 
+-----
+-e 
+FILE: src/main/java/com/example/WeatherController.java
+package com.example.controller;
+
+import com.example.model.Weather;
+import com.example.repository.WeatherRepository;
+import com.example.service.WeatherService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@Tag(name = "Weather API", description = "Управление данными о погоде")
+public class WeatherController {
+    
+    private final WeatherRepository weatherRepository;
+    private final WeatherService weatherService;
+
+    public WeatherController(WeatherRepository weatherRepository, WeatherService weatherService) {
+        this.weatherRepository = weatherRepository;
+        this.weatherService = weatherService;
+    }
+
+    @Operation(
+        summary = "Проверка сервера",
+        description = "Возвращает PONG для проверки работоспособности",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Успешный ответ",
+                content = @Content(
+                    mediaType = "text/html",
+                    examples = @ExampleObject("<html><body><h1>PONG</h1></body></html>")
+                )
+            )
+        }
+    )
+    @GetMapping(value = "/ping", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("<html><body><h1>PONG</h1></body></html>");
+    }
+
+    @Operation(
+        summary = "Статус сервиса",
+        description = "Проверка состояния сервиса",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Сервис работает",
+                content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject("{\"status\": \"HEALTHY\"}")
+                )
+            )
+        }
+    )
+    @GetMapping(value = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("{\"status\": \"HEALTHY\"}");
+    }
+
+    @Operation(
+        summary = "Список городов",
+        description = "Возвращает список городов с температурой",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "HTML со списком городов",
+                content = @Content(
+                    mediaType = "text/html"
+                )
+            )
+        }
+    )
+    @GetMapping(value = "/list", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> list() {
+        StringBuilder html = new StringBuilder("<html><body><ul>");
+        
+        List<Weather> weatherList = weatherRepository.findAll();
+        for (Weather weather : weatherList) {
+            html.append("<li>")
+                .append(escapeHtml(weather.getCity()))
+                .append(": ")
+                .append(weather.getTemperature())
+                .append("°C</li>");
+        }
+        
+        html.append("</ul></body></html>");
+        return ResponseEntity.ok(html.toString());
+    }
+
+    @Operation(
+        summary = "Обновить данные",
+        description = "Обновляет данные о погоде для всех городов",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Данные обновлены",
+                content = @Content(
+                    mediaType = "text/plain",
+                    examples = @ExampleObject("Weather data updated successfully")
+                )
+            )
+        }
+    )
+    @GetMapping("/update")
+    public ResponseEntity<String> updateWeather() {
+        weatherService.updateAllCities();
+        return ResponseEntity.ok("Weather data updated successfully");
+    }
+
+    @Operation(
+        summary = "Добавить город",
+        description = "Добавляет новый город с температурой",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Данные города",
+            required = true,
+            content = @Content(
+                mediaType = "application/x-www-form-urlencoded",
+                schema = @Schema(
+                    implementation = AddCityRequest.class
+                )
+            )
+        ),
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Город добавлен",
+                content = @Content(
+                    mediaType = "text/html",
+                    examples = @ExampleObject("<html><body><p>Город добавлен!</p></body></html>")
+                )
+            )
+        }
+    )
+    @PostMapping(value = "/add", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> add(
+        @Parameter(description = "Название города", example = "Berlin") @RequestParam String city,
+        @Parameter(description = "Температура в градусах Цельсия", example = "20") @RequestParam int temperature
+    ) {
+        Weather weather = new Weather(city, temperature);
+        weatherRepository.save(weather);
+        
+        return ResponseEntity.ok("<html><body><p>Город добавлен!</p></body></html>");
+    }
+
+    private String escapeHtml(String input) {
+        return input.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;");
+    }
+
+    @Schema(description = "Модель запроса для добавления города")
+    private static class AddCityRequest {
+        @Schema(description = "Название города", example = "Berlin", required = true)
+        public String city;
+        
+        @Schema(description = "Температура в градусах Цельсия", example = "20", required = true)
+        public int temperature;
+    }
+}-e 
+-----
+-e 
+FILE: src/main/resources/application.properties
+spring.jpa.hibernate.ddl-auto=update
+weather.update.interval=600000 #частота запросов в open_weather
+logging.file.name=/app/logs/weather-app.log
+spring.datasource.url=jdbc:postgresql://localhost:5432/weather_db
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.jpa.show-sql=true
+
+# Swagger настройки
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.api-docs.path=/v3/api-docs
+springdoc.swagger-ui.tagsSorter=alpha
+springdoc.swagger-ui.operationsSorter=alpha
+springdoc.version=3.0.2-e 
+-----
+-e 
+FILE: src/main/resources/data.sql
+CREATE TABLE IF NOT EXISTS weather (
+    city TEXT PRIMARY KEY,
+    temperature INT
+);
+
+INSERT INTO weather (city, temperature) VALUES ('London', 20), ('Paris', 15);-e 
+-----
