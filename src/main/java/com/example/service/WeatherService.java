@@ -27,11 +27,11 @@ public class WeatherService {
     private static final String API_URL = "https://api.open-meteo.com/v1/forecast";
     private final WeatherRepository weatherRepo;
 
-    // private static final Map<String, double[]> CITIES = Map.of(
-    //     "Berlin", new double[]{52.52, 13.41},
-    //     "London", new double[]{51.51, -0.13},
-    //     "Paris", new double[]{48.85, 2.35}
-    // );
+    private static final Map<String, double[]> CITIES = Map.of(
+        "Berlin", new double[]{52.52, 13.41},
+        "London", new double[]{51.51, -0.13},
+        "Paris", new double[]{48.85, 2.35}
+    );
 
     @Autowired
     public WeatherService(WeatherRepository weatherRepo) {
