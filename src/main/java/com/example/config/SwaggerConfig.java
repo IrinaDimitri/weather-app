@@ -7,8 +7,8 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
 
-@Configuration
-@OpenAPIDefinition(
+@Configuration 
+@OpenAPIDefinition(  
     info = @Info(
         title = "Weather API",
         version = "3.0.2",
@@ -29,5 +29,5 @@ import org.springframework.context.annotation.Configuration;
         )
     }
 )
-public class SwaggerConfig {
+public class SwaggerConfig { 
 }

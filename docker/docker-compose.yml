@@ -1,9 +1,6 @@
 services:
   backend:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: weather-app
+    image: irinadimi/weather-app:latest
     container_name: weather-backend
     ports:
       - "8080:8080"
@@ -16,7 +13,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
       SPRING_JPA_DATABASE-PLATFORM: org.hibernate.dialect.PostgreSQLDialect
-      LOGGING_FILE_NAME: /app/logs/weather-app.log
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: true
+      SPRING_SQL_INIT_MODE: always
     networks:
       - weather-net
     healthcheck:

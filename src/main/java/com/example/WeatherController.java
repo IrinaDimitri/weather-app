@@ -1,8 +1,7 @@
-package com.example.controller;
+package com.example; 
 
 import com.example.model.Weather;
 import com.example.repository.WeatherRepository;
-import com.example.service.WeatherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,12 +19,10 @@ import java.util.List;
 public class WeatherController {
 
     private final WeatherRepository weatherRepository;
-    private final WeatherService weatherService;
     private static final Logger log = LoggerFactory.getLogger(WeatherController.class);
 
-    public WeatherController(WeatherRepository weatherRepository, WeatherService weatherService) {
+    public WeatherController(WeatherRepository weatherRepository) {
         this.weatherRepository = weatherRepository;
-        this.weatherService = weatherService;
     }
 
     @GetMapping(value = "/ping", produces = MediaType.TEXT_HTML_VALUE)
@@ -81,6 +78,7 @@ public class WeatherController {
             )
         }
     )
+
     @PostMapping(value = "/add", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> add(
         @RequestParam String city,
@@ -108,7 +106,6 @@ public class WeatherController {
                 tempToSave = temperature;
                 updateInfo = "<p>Температура установлена вручную.</p>";
             } else {
-                // Здесь можно интегрировать вызов внешнего API или сервиса для получения температуры
                 tempToSave = 20; // заглушка
                 updateInfo = "<p>Температура не указана. Использовано значение по умолчанию: 20°C.</p>";
             }
