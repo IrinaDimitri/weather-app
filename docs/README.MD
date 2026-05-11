@@ -1,284 +1,285 @@
-# Weather API 
+```text
+# Weather API
 
-Spring Boot приложение для управления данными о погоде.  
-Использует PostgreSQL, Swagger и поддерживает контейнеризацию через Docker.
+Spring Boot application for managing weather data.  
+Uses PostgreSQL, Swagger, and supports containerization via Docker.
 
-## Содержание
-1. [Структура проекта](#структура-проекта)
-2. [Запуск проекта](#запуск-проекта)
-   - [Требования](#требования)
-   - [Сборка проекта](#сборка-проекта)
-3. [Доступные эндпоинты](#доступные-эндпоинты)
+## Table of Contents
+1. [Project Structure](#project-structure)
+2. [Getting Started](#getting-started)
+   - [Requirements](#requirements)
+   - [Build](#build)
+3. [Available Endpoints](#available-endpoints)
    - [Swagger UI](#swagger-ui)
-   - [Варианты тестирования](#варианты-тестирования)
+   - [Testing Options](#testing-options)
    - [GET /ping](#get-ping)
    - [GET /health](#get-health)
    - [GET /list](#get-list)
    - [POST /add](#post-add)
    - [DELETE /delete](#delete-delete)
-4. [Работа с PostgreSQL в Docker](#работа-с-postgresql-в-docker)
-   - [Проверка подключения](#1-проверка-подключения-к-postgresql)
-   - [Навигация по БД](#2-навигация-и-просмотр-структуры-базы-данных)
-   - [Примеры SQL-запросов](#3-примеры-sql-запросов)
-5. [Особенности проекта](#особенности-проекта)
-   - [Прокси и порт в NGINX](#прокси-и-порт-в-nginx)
+4. [Working with PostgreSQL in Docker](#working-with-postgresql-in-docker)
+   - [Connection Check](#1-connection-check)
+   - [Database Navigation](#2-database-navigation-and-structure)
+   - [SQL Query Examples](#3-sql-query-examples)
+5. [Project Features](#project-features)
+   - [NGINX Proxy & Port](#nginx-proxy--port)
    - [Docker](#docker)
-   - [Логирование](#логирование)
+   - [Logging](#logging)
    - [GitHub Workflows](#github-workflows)
-   - [Процесс сборки](#процесс-сборки-и-папка-target)
+   - [Build Process](#build-process-and-target-folder)
 ---
-##  Структура проекта
+## Project Structure
 ```text
  weather-app
-├── .dockerignore          # Игнорируемые файлы для Docker
-├── .mvn/wrapper/          # Настройки Maven Wrapper
+├── .dockerignore          # Files ignored by Docker
+├── .mvn/wrapper/          # Maven Wrapper settings
 │   └── ⚙️ maven-wrapper.properties
-├── Makefile               # Автоматизация сборки
-├── all_files_combined.txt # (опционально) Объединённый лог
-├── docker/                # Docker-конфигурации
-│   ├── Dockerfile         # Образ приложения
-│   └── docker-compose.yml # Оркестрация сервисов
-├── nginx/                # Nginx прокси
-│   └── nginx.conf        # Конфиг маршрутизации
-├── pom.xml               # Зависимости Maven
+├── Makefile               # Build automation
+├── all_files_combined.txt # (optional) Combined log
+├── docker/                # Docker configurations
+│   ├── Dockerfile         # Application image
+│   └── docker-compose.yml # Service orchestration
+├── nginx/                # Nginx proxy
+│   └── nginx.conf        # Routing config
+├── pom.xml               # Maven dependencies
 └── src/main/
     ├── java/com/example/
-    │   ├── WeatherApp.java       # Главный класс
+    │   ├── WeatherApp.java       # Main class
     │   ├── WeatherController.java # REST API
     │   ├── config/
-    │   │   └️ SwaggerConfig.java  # Документация
-    │   ├️  model/Weather.java      # Сущность данных
-    │   ├️ repository/WeatherRepository.java # Доступ к БД
-    │   └️ service/WeatherService.java # Бизнес-логика
+    │   │   └️ SwaggerConfig.java  # Documentation
+    │   ├️  model/Weather.java      # Data entity
+    │   ├️ repository/WeatherRepository.java # Database access
+    │   └️ service/WeatherService.java # Business logic
     └️ resources/
-        ├️ application.properties # Настройки Spring
-        └️ data.sql              # Инициализация БД
+        ├️ application.properties # Spring settings
+        └️ data.sql              # Database initialization
 ```
 
-## Запуск проекта
+## Getting Started
 
-### Требования
-- Java версии 17+.
-- Docker для контейнеризации компонентов (опционально).
-- Maven — инструмент сборки и управления зависимостями.
-- PostgreSQL база данных (локально или через Docker).
+### Requirements
+- Java 17+.
+- Docker for component containerization (optional).
+- Maven — build and dependency management tool.
+- PostgreSQL database (locally or via Docker).
 
-### Сборка проекта
-Для запуска или рестарта в корневой директории проекта запустите команду:
+### Build
+To start or restart, run the following command from the project root directory:
 ```bash
 make
 ```
-Для того, чтобы остановить проект, запустите команду из корневой директории проекта:
+To stop the project, run the following command from the project root directory:
 ```bash
 make stop
 ```
-Приложение будет доступно по адресам: http://localhost:8080 И через прокси http://localhost/
+The application will be available at: http://localhost:8080 and via proxy at http://localhost/
 
-Вывести список всех доступных команд make можно с корневой директории проекта запросом
+To list all available make commands from the project root directory:
 ```bash
 make help
 ```
 
-# Доступные эндпоинты
+# Available Endpoints
 
 ## Swagger UI
 
-Документация доступна по адресам после локальной сборки проекта:
+Documentation is available at the following addresses after local build:
 - http://localhost/swagger-ui/index.html
 - http://localhost:8080/swagger-ui/index.html
 
-Также после сборки будет доступна OpenApi documentation: http://localhost/v3/api-docs
+After build, OpenAPI documentation will also be available at: http://localhost/v3/api-docs
 
-Открыть документацию из корневой директории проекта:
+To open documentation from the project root directory:
 ```bash
 make doc
 ```
 
-## Варианты тестирования
-1. В Postman. Файл коллекции: docs/Weather-app.postman_collection.json
-2. В браузере по прямым ссылкам http://localhost/{{method}}
-3. Напрямую в терминале через curl http://localhost/{{method}}
+## Testing Options
+1. Using Postman. Collection file: docs/Weather-app.postman_collection.json
+2. In a browser via direct links: http://localhost/{{method}}
+3. Directly in terminal via curl: curl http://localhost/{{method}}
 
 ## GET /ping  
-*Функционал: проверка доступности сервиса.*
+*Functionality: service availability check.*
 
-### Коды ответов:
-| Код   | Описание      | Content-Type   | Пример ответа                                           |
-|-------|---------------|----------------|---------------------------------------------------------|
-| 200   | Сервис отвечает| text/html      | `<html><body><h1>PONG</h1></body></html>`             |
+### Response Codes:
+| Code | Description      | Content-Type   | Response Example                                         |
+|------|------------------|----------------|----------------------------------------------------------|
+| 200  | Service responds | text/html      | `<html><body><h1>PONG</h1></body></html>`              |
 
-### Примеры тестирования:
-| Способ    | Команда / URL                      |
-|-----------|------------------------------------|
-| Terminal  | `curl http://localhost/ping`       |
-| REST API  | `GET http://localhost/ping`        |
-| Browser   | `http://localhost/ping`            |
+### Testing Examples:
+| Method   | Command / URL                      |
+|----------|------------------------------------|
+| Terminal | `curl http://localhost/ping`       |
+| REST API | `GET http://localhost/ping`        |
+| Browser  | `http://localhost/ping`            |
 
 ---
 
 ## GET /health  
-*Функционал: проверка состояния сервиса.*
+*Functionality: service health check.*
 
-### Коды ответов:
-| Код   | Описание    | Content-Type   | Пример ответа                                     |
-|-------|-------------|----------------|---------------------------------------------------|
-| 200   | Сервис здоров| application/json| `{ "status": "HEALTHY" }`                          |
+### Response Codes:
+| Code | Description   | Content-Type     | Response Example                               |
+|------|---------------|------------------|-------------------------------------------------|
+| 200  | Service healthy| application/json | `{ "status": "HEALTHY" }`                       |
 
-### Примеры тестирования:
-| Способ    | Команда / URL                       |
-|-----------|-------------------------------------|
-| Terminal  | `curl http://localhost/health`      |
-| REST API  | `GET http://localhost/health`       |
-| Browser   | `http://localhost/health`           |
+### Testing Examples:
+| Method   | Command / URL                       |
+|----------|-------------------------------------|
+| Terminal | `curl http://localhost/health`      |
+| REST API | `GET http://localhost/health`       |
+| Browser  | `http://localhost/health`           |
 
 ---
 
 ## GET /list  
-*Функционал: получение списка всех городов и температур.*
+*Functionality: get a list of all cities and temperatures.*
 
-### Коды ответов:
-| Код   | Описание                      | Content-Type   | Пример ответа                                                               |
-|-------|-------------------------------|----------------|----------------------------------------------------------------------------|
-| 200   | Список успешно возвращён       | text/html      | `<html><body><ul><li>Paris: 18°C</li><li>Rome: 25°C</li></ul></body></html>` |
-| 204   | Список городов пуст            | text/html      | `<html><body><h2>Информация</h2><p>Список городов с погодой пока пуст.</p></body></html>` |
+### Response Codes:
+| Code | Description                   | Content-Type | Response Example                                                            |
+|------|-------------------------------|--------------|-----------------------------------------------------------------------------|
+| 200  | List successfully returned    | text/html    | `<html><body><ul><li>Paris: 18°C</li><li>Rome: 25°C</li></ul></body></html>` |
+| 204  | City list is empty             | text/html    | `<html><body><h2>Info</h2><p>The weather city list is currently empty.</p></body></html>` |
 
 ---
 
-### Примеры тестирования:
-| Способ    | Команда / URL                     |
-|-----------|-----------------------------------|
-| Terminal  | `curl http://localhost/list`      |
-| REST API  | `GET http://localhost/list`       |
-| Browser   | `http://localhost/list`           |
+### Testing Examples:
+| Method   | Command / URL                     |
+|----------|-----------------------------------|
+| Terminal | `curl http://localhost/list`      |
+| REST API | `GET http://localhost/list`       |
+| Browser  | `http://localhost/list`           |
 
 ---
 
 ## POST /add  
-*Функционал: добавление или обновление данных о погоде для города.*
+*Functionality: add or update weather data for a city.*
 
-### Параметры:
-| Параметр     | Тип      | Обязательный | Описание                             |
-|--------------|----------|--------------|--------------------------------------|
-| `city`       | String   | ✅           | Название города (латиница, дефисы)   |
-| `temperature`| Integer  | ❌           | Температура в °C (по умолчанию 20)   |
-| `forceUpdate`| Boolean  | ❌           | Принудительное обновление            |
+### Parameters:
+| Parameter    | Type     | Required | Description                           |
+|--------------|----------|----------|---------------------------------------|
+| `city`       | String   | ✅        | City name (Latin letters, hyphens)    |
+| `temperature`| Integer  | ❌        | Temperature in °C (default 20)        |
+| `forceUpdate`| Boolean  | ❌        | Force update even if city exists      |
 
-### Коды ответов:
-| Код   | Описание                              | Content-Type   | Пример ответа                                                                                                 |
-|-------|---------------------------------------|----------------|---------------------------------------------------------------------------------------------------------------|
-| 200   | Город успешно добавлен или обновлён   | text/html      | `<html><body><h2>Успех!</h2><p>Город "Paris" добавлен с температурой 20°C.</p></body></html>`                   |
-| 400   | Некорректные параметры                 | text/html      | `<html><body><h2>Ошибка!</h2><p>Параметр 'city' не должен быть пустым.</p></body></html>`                           |
-| 409   | Город уже существует (без forceUpdate)| text/html      | `<html><body><h2>Ошибка!</h2><p>Город "London" уже существует в базе данных.</p></body></html>`                    |
-| 500   | Внутренняя ошибка сервера             | text/html      | `<html><body><h2>Ошибка!</h2><p>Внутренняя ошибка сервера при сохранении данных.</p></body></html>`                 |
+### Response Codes:
+| Code | Description                             | Content-Type | Response Example                                                                                                  |
+|------|-----------------------------------------|--------------|--------------------------------------------------------------------------------------------------------------------|
+| 200  | City successfully added or updated      | text/html    | `<html><body><h2>Success!</h2><p>City "Paris" added with temperature 20°C.</p></body></html>`                    |
+| 400  | Invalid parameters                      | text/html    | `<html><body><h2>Error!</h2><p>'city' parameter must not be empty.</p></body></html>`                           |
+| 409  | City already exists (without forceUpdate)| text/html    | `<html><body><h2>Error!</h2><p>City "London" already exists in the database.</p></body></html>`                  |
+| 500  | Internal server error                   | text/html    | `<html><body><h2>Error!</h2><p>Internal server error while saving data.</p></body></html>`                        |
 
 ---
 
-### Примеры тестирования:
-| Сценарий             | Команда                                                        |
-|----------------------|----------------------------------------------------------------|
-| Добавление города Terminal      | `curl -X POST "http://localhost/add?city=Berlin"`              |
-| Обновление города Terminal      | `curl -X POST "http://localhost/add?city=Berlin&forceUpdate=true"` |
-| REST API              | `POST http://localhost/add?city=Berlin`                        |
-| Browser               | `http://localhost/add?city=Berlin&forceUpdate=true`            |
+### Testing Examples:
+| Scenario                  | Command                                                        |
+|---------------------------|----------------------------------------------------------------|
+| Add city (Terminal)       | `curl -X POST "http://localhost/add?city=Berlin"`              |
+| Update city (Terminal)    | `curl -X POST "http://localhost/add?city=Berlin&forceUpdate=true"` |
+| REST API                  | `POST http://localhost/add?city=Berlin`                        |
+| Browser                   | `http://localhost/add?city=Berlin&forceUpdate=true`            |
 
 ---
 
 
 ## DELETE /delete  
-*Функционал: удаление данных о погоде.*
+*Functionality: delete weather data.*
 
-### Параметры:
-| Параметр | Тип      | Обязательный | Описание                  | Примечания                          |
-|----------|----------|--------------|---------------------------|-------------------------------------|
-| `city`   | String   | ❌           | Название города           | Нельзя использовать с `all=true`    |
-| `all`    | Boolean  | ❌           | Удалить все данные        | Использовать `all=true`             |
+### Parameters:
+| Parameter | Type     | Required | Description              | Notes                               |
+|-----------|----------|----------|--------------------------|-------------------------------------|
+| `city`    | String   | ❌        | City name               | Cannot be used with `all=true`      |
+| `all`     | Boolean  | ❌        | Delete all data          | Use `all=true`                      |
 
-> **ℹ️ Правила:**
-> - Должен быть указан хотя бы один параметр.
+> **ℹ️ Rules:**
+> - At least one parameter must be specified.
 
-### Коды ответов:
-| Код   | Описание                               | Content-Type   | Пример ответа                                                                                                    |
-|-------|----------------------------------------|----------------|------------------------------------------------------------------------------------------------------------------|
-| 200   | Успешное удаление                      | text/html      | `<html><body><h2>Успех!</h2><p>Город "Rome" успешно удален.</p></body></html>`                                   |
-| 400   | Не указан город и не установлен all=true| text/html      | `<html><body><h2>Ошибка!</h2><p>Необходимо указать 'city' или all=true.</p></body></html>`                      |
-| 404   | Город не найден                        | text/html      | `<html><body><h2>Ошибка!</h2><p>Город "Atlantis" не найден в базе данных.</p></body></html>`                      |
-| 500   | Внутренняя ошибка сервера              | text/html      | `<html><body><h2>Ошибка!</h2><p>Ошибка при удалении данных.</p></body></html>`                                |
-
----
-
-### Примеры тестирования:
-| Сценарий              | Команда                                                   |
-|-----------------------|-----------------------------------------------------------|
-| Удаление города Terminal        | `curl -X DELETE "http://localhost/delete?city=Berlin"`     |
-| REST API              | `DELETE http://localhost/delete?city=Berlin`              |
-| Browser               | `http://localhost/delete?city=Berlin`                     |
-| Удаление всех Terminal        | `curl -X DELETE "http://localhost/delete?all=true"`        |
-| Browser (все данные)  | `http://localhost/delete?all=true`                         |
-
-
-# Работа с PostgreSQL в Docker
-
-*Инструкция по подключению к базе данных PostgreSQL в Docker-контейнере и выполнению базовых SQL-команд.*
+### Response Codes:
+| Code | Description                                | Content-Type | Response Example                                                                                                 |
+|------|--------------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------|
+| 200  | Successfully deleted                       | text/html    | `<html><body><h2>Success!</h2><p>City "Rome" successfully deleted.</p></body></html>`                             |
+| 400  | No city specified and all=true not set     | text/html    | `<html><body><h2>Error!</h2><p>You must specify 'city' or set all=true.</p></body></html>`                      |
+| 404  | City not found                             | text/html    | `<html><body><h2>Error!</h2><p>City "Atlantis" not found in the database.</p></body></html>`                      |
+| 500  | Internal server error                      | text/html    | `<html><body><h2>Error!</h2><p>Error deleting data.</p></body></html>`                                          |
 
 ---
 
-## 1. Проверка подключения к PostgreSQL
+### Testing Examples:
+| Scenario               | Command                                                   |
+|------------------------|-----------------------------------------------------------|
+| Delete city (Terminal) | `curl -X DELETE "http://localhost/delete?city=Berlin"`     |
+| REST API               | `DELETE http://localhost/delete?city=Berlin`              |
+| Browser                | `http://localhost/delete?city=Berlin`                     |
+| Delete all (Terminal)  | `curl -X DELETE "http://localhost/delete?all=true"`        |
+| Browser (all data)     | `http://localhost/delete?all=true`                         |
 
-### 1.1 Проверить, что контейнер запущен
+
+# Working with PostgreSQL in Docker
+
+*Instructions for connecting to the PostgreSQL database in a Docker container and executing basic SQL commands.*
+
+---
+
+## 1. Connection Check
+
+### 1.1 Verify the container is running
 
 ```bash
 docker ps
 ```
 
-Убедитесь, что контейнер с именем `weather-postgres` отображается в списке.
+Ensure the container named `weather-postgres` appears in the list.
 
-Запустить команду из корневой директории:
+Run the command from the root directory:
 ```bash
 make db
 ```
-В этом случае для выхода из weather_db=# нажмите \q
+In this case, to exit from weather_db=# type \q
 
-### 1.2 Подключиться напрямую к PostgreSQL из контейнера
+### 1.2 Connect directly to PostgreSQL from the container
 
 ```bash
 docker exec -it weather-postgres psql -U postgres -d weather_db
 ```
 
-Если подключение успешно, появится приглашение:
+If the connection is successful, the prompt will appear:
 
 ```
 weather_db=#
 ```
 
-### 1.3 Альтернатива: подключение через bash внутри контейнера
+### 1.3 Alternative: connect via bash inside the container
 
-1. Войти в контейнер:
+1. Enter the container:
     ```bash
     docker exec -it weather-postgres bash
     ```
 
-2. Затем подключиться к PostgreSQL:
+2. Then connect to PostgreSQL:
     ```bash
     psql -U postgres -d weather_db
     ```
 
 ---
 
-## 2. Навигация и просмотр структуры базы данных
+## 2. Database Navigation and Structure
 
-### 2.1 Посмотреть список всех таблиц
+### 2.1 List all tables
 
 ```sql
 \dt
 ```
 
-### 2.2 Посмотреть структуру таблицы
+### 2.2 View table structure
 
 ```sql
 \d weather
 ```
 
-### 2.3 Посмотреть все записи в таблице `weather`
+### 2.3 View all records in the `weather` table
 
 ```sql
 SELECT * FROM weather;
@@ -286,27 +287,27 @@ SELECT * FROM weather;
 
 ---
 
-## 3. Примеры SQL-запросов
+## 3. SQL Query Examples
 
-### 3.1 Добавить новую запись
+### 3.1 Insert a new record
 
 ```sql
 INSERT INTO weather (city, temperature) VALUES ('Kazan', 24);
 ```
 
-### 3.2 Удалить запись по идентификатору
+### 3.2 Delete a record by identifier
 
 ```sql
 DELETE FROM weather WHERE city = 'Kazan';
 ```
 
-### 3.3 Обновить данные по условию
+### 3.3 Update data by condition
 
 ```sql
 UPDATE weather SET temperature = 27 WHERE city = 'Kazan';
 ```
 
-### 3.4 Найти записи с температурой выше определенного значения
+### 3.4 Find records with temperature above a certain value
 
 ```sql
 SELECT * FROM weather WHERE temperature > 25;
@@ -314,26 +315,26 @@ SELECT * FROM weather WHERE temperature > 25;
 
 ---
 
-## 4. Выход
+## 4. Exit
 
-### 4.1 Выйти из PostgreSQL
+### 4.1 Exit PostgreSQL
 
 ```sql
 \q
 ```
 
-### 4.2 Выйти из контейнера
+### 4.2 Exit the container
 
 ```bash
 exit
 ```
 
 ---
-## Где хранятся данные
+## Where Data is Stored
 
-Данные о городах и их температурах хранятся в базе данных PostgreSQL, которая запускается в контейнере Docker. Изначально при первом запуске приложения, данные городов создаются через скрипт **`data.sql`**, который находится в папке **`src/main/resources`**.
+City and temperature data is stored in the PostgreSQL database running in a Docker container. Initially, when the application starts for the first time, city data is created using the **`data.sql`** script located in the **`src/main/resources`** folder.
 
-Пример скрипта **`data.sql`**:
+Example **`data.sql`** script:
 ```sql
 CREATE TABLE IF NOT EXISTS weather (
     city TEXT PRIMARY KEY,
@@ -347,36 +348,36 @@ INSERT INTO weather (city, temperature) VALUES
   ('Moscow', 17);
 ```
 
-# Особенности проекта
+# Project Features
 
-## Прокси и порт в NGINX
+## NGINX Proxy & Port
 
-В проекте используется NGINX для проксирования запросов к серверу backend, где работает основное приложение. 
+The project uses NGINX to proxy requests to the backend server where the main application runs.
 
-### Настройки NGINX:
-- Конфигурация NGINX находится в **`nginx/nginx.conf`**.
-- Прокси настроен так, что все запросы на **порт 80** (стандартный HTTP порт) перенаправляются на backend, который работает на **порт 8080**.
+### NGINX Settings:
+- The NGINX configuration is located in **`nginx/nginx.conf`**.
+- The proxy is configured so that all requests on **port 80** (standard HTTP port) are forwarded to the backend running on **port 8080**.
 
-Пример конфигурации NGINX:
+Example NGINX configuration:
 ```nginx
-# Определение группы серверов для балансировки нагрузки
+# Define server group for load balancing
 upstream backend {
-    server weather-backend:8080; #Проксирует на backend-контейнер
+    server weather-backend:8080; #Proxies to the backend container
 }
 
 server {
-    listen 80;# Слушает 80 порт
-    server_name localhost; #Домен сервера
-    access_log /var/log/nginx/access.log; # Лог доступа
-    error_log /var/log/nginx/error.log; # Лог ошибок
+    listen 80;# Listens on port 80
+    server_name localhost; #Server domain
+    access_log /var/log/nginx/access.log; # Access log
+    error_log /var/log/nginx/error.log; # Error log
     location / { 
-        proxy_pass http://backend;# Перенаправление на backend
-        proxy_set_header Host $host;# Оригинальный хост
-        proxy_set_header X-Real-IP $remote_addr;# Реальный IP клиента
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Цепочка прокси
-        proxy_set_header X-Forwarded-Proto $scheme;#Оригинальный протокол (http/https)
-        proxy_connect_timeout 60s;# Таймаут подключения
-        proxy_read_timeout 60s; #Таймаут чтения
+        proxy_pass http://backend;# Forward to backend
+        proxy_set_header Host $host;# Original host
+        proxy_set_header X-Real-IP $remote_addr;# Client real IP
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Proxy chain
+        proxy_set_header X-Forwarded-Proto $scheme;#Original protocol (http/https)
+        proxy_connect_timeout 60s;# Connection timeout
+        proxy_read_timeout 60s; #Read timeout
     }
 
     location /swagger-ui/ {
@@ -389,33 +390,33 @@ server {
 }
 ```
 
-### Детали работы:
-- Внутри контейнера NGINX проксирует запросы, передавая их на backend сервер по адресу `weather-backend:8080`.
-- Обработчик `/ping` отвечает на запросы с подтверждением работы сервиса, а `/health` возвращает статус сервиса.
+### How It Works:
+- Inside the NGINX container, requests are proxied and forwarded to the backend server at `weather-backend:8080`.
+- The `/ping` handler responds with a confirmation of service availability, and `/health` returns the service status.
 
 ## Docker
 
-Проект использует Docker для контейнеризации приложения, что упрощает настройку и деплой. В проекте предусмотрены следующие контейнеры:
-1. **Backend**: Контейнер с Spring Boot приложением, который обслуживает запросы.
-2. **Postgres**: Контейнер с базой данных PostgreSQL для хранения информации о погоде.
-3. **NGINX**: Контейнер с настроенным проксированием для перенаправления запросов на backend.
+The project uses Docker for application containerization, simplifying setup and deployment. The project includes the following containers:
+1. **Backend**: Container with the Spring Boot application serving requests.
+2. **Postgres**: Container with the PostgreSQL database for storing weather information.
+3. **NGINX**: Container with configured proxying to forward requests to the backend.
 
-Контейнеры описаны в **`docker-compose.yml`** и **`Dockerfile`**, где указаны все необходимые параметры для их сборки и запуска.
+Containers are described in **`docker-compose.yml`** and **`Dockerfile`**, which specify all necessary parameters for their build and launch.
 
-## Логирование
+## Logging
 
-Для логирования используется встроенное логирование Spring Boot. Логи приложения сохраняются в файл **`/app/logs/weather-app.log`**, который монтируется в Docker контейнере.
+Spring Boot's built-in logging is used. Application logs are saved to the file **`/app/logs/weather-app.log`**, which is mounted in the Docker container.
 
-Пример конфигурации логирования:
+Example logging configuration:
 ```properties
 logging.file.name=/app/logs/weather-app.log
 ```
 
 ## GitHub Workflows
 
-Проект поддерживает автоматическое тестирование и деплой с использованием GitHub Actions. В репозитории настроены соответствующие workflow для автоматического тестирования кода при каждом push и деплоя приложения в облако.
+The project supports automated testing and deployment using GitHub Actions. The repository is set up with corresponding workflows for automatic code testing on every push and deploying the application to the cloud.
 
-### Пример workflow:
+### Example workflow:
 ```yaml
 name: Build and Deploy
 
@@ -441,22 +442,22 @@ jobs:
 ```
 
 
-## Логирование в NGINX
+## NGINX Logging
 
-NGINX также ведёт логирование входящих запросов. Файлы логов монтируются из контейнера и находятся в директории:
+NGINX also logs incoming requests. Log files are mounted from the container and located in the directory:
 
 ```
 nginx/logs/
-├── access.log  # успешные запросы
-├── error.log   # ошибки на уровне прокси
+├── access.log  # successful requests
+├── error.log   # proxy-level errors
 ```
 
-Эти логи можно использовать для:
-- отслеживания проблем с маршрутизацией или доступностью backend;
-- анализа активности и частоты запросов;
-- выявления нестабильных endpoint'ов или периодов высокой нагрузки.
+These logs can be used for:
+- tracking routing issues or backend availability problems;
+- analyzing request activity and frequency;
+- identifying unstable endpoints or periods of high load.
 
-Примеры строк логов `access.log`:
+Example `access.log` lines:
 ```
 127.0.0.1 - - [13/Jul/2025:12:00:01 +0000] "GET /ping HTTP/1.1" 200 32 "-" "curl/7.68.0"
 127.0.0.1 - - [13/Jul/2025:12:01:01 +0000] "POST /add?city=Paris HTTP/1.1" 200 128 "-" "PostmanRuntime/7.32.0"
@@ -464,79 +465,78 @@ nginx/logs/
 
 ---
 
-## Детали роутинга и проксирования
+## Routing and Proxy Details
 
-Вся маршрутизация организована через NGINX. Основная логика такова:
+All routing is organized through NGINX. The main logic is as follows:
 
-| Запрос (на порт 80)        | Проксируется на backend         | Комментарий                          |
-|---------------------------|----------------------------------|--------------------------------------|
-| `/`                       | `http://backend/`               | Главная страница, интерфейс          |
- JSON-индикатор работоспособности     |
-| `/swagger-ui/`            | `http://backend/swagger-ui/`    | Swagger-документация                 |
-| `/v3/api-docs`            | `http://backend/v3/api-docs`    | OpenAPI спецификация                 |
+| Request (on port 80)      | Proxied to backend              | Comment                               |
+|---------------------------|----------------------------------|---------------------------------------|
+| `/`                       | `http://backend/`               | Main page, interface                  |
+| `/ping`                   | `http://backend/ping`           | Health check indicator                |
+| `/swagger-ui/`            | `http://backend/swagger-ui/`    | Swagger documentation                 |
+| `/v3/api-docs`            | `http://backend/v3/api-docs`    | OpenAPI specification                 |
 
-Всё это происходит благодаря следующей директиве в `nginx.conf`:
+This is achieved through the following directive in `nginx.conf`:
 
 ```nginx
     location / { 
-        proxy_pass http://backend;# Перенаправление на backend
-        proxy_set_header Host $host;# Оригинальный хост
-        proxy_set_header X-Real-IP $remote_addr;# Реальный IP клиента
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Цепочка прокси
-        proxy_set_header X-Forwarded-Proto $scheme;#Оригинальный протокол (http/https)
-        proxy_connect_timeout 60s;# Таймаут подключения
-        proxy_read_timeout 60s; #Таймаут чтения
+        proxy_pass http://backend;# Forward to backend
+        proxy_set_header Host $host;# Original host
+        proxy_set_header X-Real-IP $remote_addr;# Client real IP
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;#Proxy chain
+        proxy_set_header X-Forwarded-Proto $scheme;#Original protocol (http/https)
+        proxy_connect_timeout 60s;# Connection timeout
+        proxy_read_timeout 60s; #Read timeout
     }
 ```
 
 ---
 
-## Процесс сборки: роли ключевых файлов
+## Build Process: Key File Roles
 
-| Файл                            | Назначение                                                        |
-|--------------------------------|--------------------------------------------------------------------|
-| `Dockerfile`                   | Инструкция по сборке backend-сервиса на основе JAR-файла          |
-| `docker-compose.yml`           | Поднимает все сервисы: backend, Postgres, NGINX                   |
-| `pom.xml`                      | Описывает зависимости и плагины для Maven сборки                  |
-| `application.properties`       | Настройки приложения, включая логирование, интервал обновлений    |
-| `data.sql`                     | SQL-инициализация базы данных при первом запуске                  |
-| `nginx.conf`                   | Конфигурация прокси-сервера NGINX                                 |
-| `WeatherApp.java`              | Точка входа Spring Boot                                           |
-| `WeatherService.java`          | Основная бизнес-логика обновлений и работы с Open-Meteo API       |
-| `WeatherController.java`       | Обработка HTTP-запросов                                           |
+| File                            | Purpose                                                            |
+|---------------------------------|--------------------------------------------------------------------|
+| `Dockerfile`                   | Instructions for building the backend service based on a JAR file  |
+| `docker-compose.yml`           | Starts all services: backend, Postgres, NGINX                      |
+| `pom.xml`                      | Describes dependencies and plugins for Maven build                 |
+| `application.properties`       | Application settings, including logging, update interval           |
+| `data.sql`                     | SQL initialization of the database on first startup                |
+| `nginx.conf`                   | NGINX proxy server configuration                                   |
+| `WeatherApp.java`              | Spring Boot entry point                                            |
+| `WeatherService.java`          | Core business logic for updates and working with Open-Meteo API    |
+| `WeatherController.java`       | HTTP request handling                                              |
 
 ---
 
-## Процесс сборки и папка `/target`
+## Build Process and `/target` folder
 
-Проект использует **Maven** как систему сборки. В процессе компиляции и упаковки приложение проходит через несколько этапов, в результате чего формируется папка `target`.
+The project uses **Maven** as a build system. During compilation and packaging, the application goes through several stages, resulting in the creation of the `target` folder.
 
-### Как создаётся `/target`
+### How `/target` is Created
 
-1. **Команда:**
+1. **Command:**
 
     ```bash
     mvn clean install
     ```
 
-    - `clean`: удаляет старую папку `target`, если она существует
-    - `install`: компилирует, запускает тесты, создает `.jar` и копирует его в локальный Maven-репозиторий
+    - `clean`: deletes the old `target` folder if it exists
+    - `install`: compiles, runs tests, creates a `.jar` and copies it to the local Maven repository
 
-2. **После сборки:** Maven автоматически создаёт папку `target/`, в которой оказывается:
-    - Скомпилированный код (в `classes/`)
-    - Сгенерированный JAR (например, `weather-app-1.0.0.jar`)
-    - Все промежуточные результаты сборки
+2. **After build:** Maven automatically creates the `target/` folder, which contains:
+    - Compiled code (in `classes/`)
+    - Generated JAR (e.g., `weather-app-1.0.0.jar`)
+    - All intermediate build results
 
-### Роль `/target` в Docker
+### Role of `/target` in Docker
 
-В `Dockerfile` используется JAR-файл из `target/`:
+The `Dockerfile` uses the JAR file from `target/`:
 
 ```Dockerfile
 COPY --from=builder /app/target/*.jar app.jar
 ```
 
-Таким образом:
-- Сначала происходит сборка через Maven в контейнере `builder`
-- Потом итоговый `.jar` копируется в финальный образ
-
----
+Thus:
+- First, the build is performed via Maven in the `builder` container
+- Then the final `.jar` is copied to the final image
+```
